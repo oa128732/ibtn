@@ -1,0 +1,291 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kaizen Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<style>
+    body {
+        background: #f4f7fb;
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+    }
+
+    .header {
+        background: linear-gradient(135deg, #0f4c75, #3282b8);
+        color: white;
+        padding: 20px 30px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    .header h1 {
+        margin: 0;
+        font-size: 34px;
+        font-weight: bold;
+    }
+
+    .dashboard-container {
+        padding: 25px;
+    }
+
+    .card-box {
+        background: white;
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+        margin-bottom: 25px;
+    }
+
+    .metric-card {
+        text-align: center;
+        padding: 25px;
+        border-radius: 16px;
+        color: white;
+        height: 100%;
+    }
+
+    .metric-card h2 {
+        font-size: 40px;
+        margin-bottom: 10px;
+    }
+
+    .metric-card p {
+        font-size: 16px;
+        margin: 0;
+    }
+
+    .bg1 { background: #0077b6; }
+    .bg2 { background: #00b4d8; }
+    .bg3 { background: #2a9d8f; }
+    .bg4 { background: #f4a261; }
+
+    .section-title {
+        font-size: 24px;
+        font-weight: bold;
+        color: #0f4c75;
+        margin-bottom: 20px;
+    }
+
+    table {
+        width: 100%;
+    }
+
+    th {
+        background: #0f4c75 !important;
+        color: white !important;
+    }
+
+    .top-performer {
+        background: #e8f7ff;
+        border-left: 6px solid #0077b6;
+        padding: 20px;
+        border-radius: 10px;
+    }
+
+    footer {
+        text-align: center;
+        padding: 15px;
+        color: #777;
+    }
+</style>
+</head>
+<body>
+
+<div class="header">
+    <h1>Kaizen Idea Tracking Dashboard</h1>
+</div>
+
+<div class="dashboard-container container-fluid">
+
+    <!-- JSON DATA -->
+    <script>
+        const kaizenData = [
+            { name: "Mendhie Rahul", ideas: 0 },
+            { name: "Sathyaseelan Sruthi", ideas: 0 },
+            { name: "Rekha Lavanya Chandra", ideas: 0 },
+            { name: "Farooq Ali Fathimafarooq", ideas: 0 },
+            { name: "Basha Tanveer", ideas: 0 },
+            { name: "Vadeyar Irana", ideas: 0 },
+            { name: "Hussain Anwar", ideas: 0 },
+            { name: "Subramaniam Siva", ideas: 0 },
+            { name: "Murali Sudharsanan", ideas: 0 },
+            { name: "Saravana Asvitha", ideas: 0 },
+            { name: "Palanisamy Balamurugan P", ideas: 0 },
+            { name: "Jayabal Mareeswari", ideas: 0 },
+            { name: "Chandran Sakthivendran", ideas: 7 },
+            { name: "Shanmugham Thangaiyasan", ideas: 0 },
+            { name: "Kandasamy Kamalesh", ideas: 0 },
+            { name: "Veeraraghavan Saravanababu", ideas: 5 },
+            { name: "Rolla Ashok Kumar", ideas: 2 },
+            { name: "Pramasivam Vinoth", ideas: 1 },
+            { name: "D Vasanth Sinoj", ideas: 1 },
+            { name: "Arumugam Kovsaliya", ideas: 0 }
+        ];
+
+        const totalIdeas = kaizenData.reduce((sum, emp) => sum + emp.ideas, 0);
+        const activeContributors = kaizenData.filter(emp => emp.ideas > 0).length;
+        const topContributor = kaizenData.reduce((max, emp) => emp.ideas > max.ideas ? emp : max);
+        const totalEmployees = kaizenData.length;
+    </script>
+
+    <!-- KPI Cards -->
+    <div class="row mb-4">
+
+        <div class="col-md-3 mb-3">
+            <div class="metric-card bg1">
+                <h2 id="totalIdeas"></h2>
+				
+                <p>
+					<a href="kaizenIdeaList.html"
+							class="btn btn-primary" target="_blank">
+						Total Kaizen Ideas
+					</a>
+				</p>
+				
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-3">
+            <div class="metric-card bg2">
+                <h2 id="contributors"></h2>
+                <p>Active Contributors</p>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-3">
+            <div class="metric-card bg3">
+                <h2 id="employees"></h2>
+                <p>Total Employees</p>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-3">
+            <div class="metric-card bg4">
+                <h2 id="topIdeas"></h2>
+                <p>Highest Ideas Submitted</p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Chart -->
+    <div class="card-box">
+        <div class="section-title">Kaizen Contribution Chart</div>
+        <canvas id="kaizenChart"></canvas>
+    </div>
+
+    <!-- Top Performer -->
+    <div class="card-box">
+        <div class="section-title">Top Performer</div>
+
+        <div class="top-performer">
+            <h4 id="topPerformerName"></h4>
+            <p>
+                Demonstrated outstanding participation in continuous improvement initiatives
+                with the highest number of Kaizen submissions.
+            </p>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="card-box">
+        <div class="section-title">Employee Contribution Details</div>
+
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Employee Name</th>
+                        <th>Kaizen Ideas</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<footer>
+    © 2026 Kaizen Continuous Improvement Dashboard
+</footer>
+
+<script>
+
+    // KPI Values
+    document.getElementById("totalIdeas").innerText = totalIdeas;
+    document.getElementById("contributors").innerText = activeContributors;
+    document.getElementById("employees").innerText = totalEmployees;
+    document.getElementById("topIdeas").innerText = topContributor.ideas;
+    document.getElementById("topPerformerName").innerText =
+        `${topContributor.name} (${topContributor.ideas} Ideas)`;
+
+
+    // Populate Table
+    const tableBody = document.getElementById("tableBody");
+
+    kaizenData.forEach((employee, index) => {
+        const row = `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${employee.name}</td>
+                <td>${employee.ideas}</td>
+                <td>
+                    ${employee.ideas > 0
+                        ? '<span class="badge bg-success">Active</span>'
+                        : '<span class="badge bg-danger">No Contribution</span>'}
+                </td>
+            </tr>
+        `;
+
+        tableBody.innerHTML += row;
+    });
+
+
+    // Chart
+    const ctx = document.getElementById('kaizenChart');
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: kaizenData.map(emp => emp.name),
+            datasets: [{
+                label: 'Kaizen Ideas',
+                data: kaizenData.map(emp => emp.ideas),
+                backgroundColor: '#0077b6',
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        maxRotation: 55,
+                        minRotation: 55
+                    }
+                },
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+
+</script>
+
+</body>
+</html>

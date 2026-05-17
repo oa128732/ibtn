@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Kaizen Idea list Dashboard</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+
+    body{
+        background:#f4f7fb;
+        font-family: Arial, sans-serif;
+    }
+
+    .header{
+        background:linear-gradient(135deg,#0f4c75,#3282b8);
+        color:white;
+        padding:20px 30px;
+        box-shadow:0 3px 10px rgba(0,0,0,0.15);
+    }
+
+    .header h1{
+        margin:0;
+        font-size:34px;
+        font-weight:bold;
+    }
+
+    .dashboard{
+        padding:25px;
+    }
+
+    .card-box{
+        background:white;
+        border-radius:16px;
+        padding:20px;
+        box-shadow:0 4px 10px rgba(0,0,0,0.08);
+        margin-bottom:25px;
+    }
+
+    .metric-card{
+        color:white;
+        border-radius:16px;
+        padding:25px;
+        text-align:center;
+        height:100%;
+    }
+
+    .metric-card h2{
+        font-size:40px;
+        margin-bottom:10px;
+    }
+
+    .metric-card p{
+        margin:0;
+        font-size:16px;
+    }
+
+    .bg1{ background:#0077b6; }
+    .bg2{ background:#00b4d8; }
+    .bg3{ background:#2a9d8f; }
+    .bg4{ background:#f4a261; }
+
+    .section-title{
+        font-size:24px;
+        font-weight:bold;
+        color:#0f4c75;
+        margin-bottom:20px;
+    }
+
+    table{
+        font-size:14px;
+    }
+
+    th{
+        background:#0f4c75 !important;
+        color:white !important;
+        vertical-align:middle;
+    }
+
+    td{
+        vertical-align:top;
+    }
+
+    .description{
+        max-width:450px;
+        white-space:pre-line;
+    }
+
+    footer{
+        text-align:center;
+        padding:15px;
+        color:#666;
+    }
+
+</style>
+
+</head>
+<body>
+
+<!-- HEADER -->
+
+<div class="header">
+    <h1>Kaizen Idea list Dashboard</h1>
+</div>
+
+<div class="dashboard container-fluid">
+
+    <!-- JSON DATA -->
+
+    <script>
+
+        const kaizenIdeas = [
+
+            {
+                id:1,
+                project:"TOPS2",
+                kaizenName:"Common GD Authentication library",
+                status:"Planned",
+                description:"Centralized authentication library for common GD integrations.",
+                PlannedStartDate:"",
+                ActualStartDate:"",
+                PlannedEndDate:"",
+                ActualEndDate:"",
+                pic:"Ashok"
+            },
+
+            {
+                id:2,
+                project:"TOPS2",
+                kaizenName:"Voice Navigation (Voice Nav)",
+                status:"Planned",
+                description:"Voice-based navigation capability for application workflow.",
+                PlannedStartDate:"",
+                ActualStartDate:"",
+                PlannedEndDate:"",
+                ActualEndDate:"",
+                pic:"Ashok"
+            },
+
+            {
+                id:3,
+                project:"PDL",
+                kaizenName:"AI-Powered Smart Assistant with Workflow Automation",
+                status:"Planned",
+                description:`Implemented an AI-based solution combining conversational assistant capabilities with workflow automation to handle tasks such as data retrieval, validation, and comparison.`,
+                PlannedStartDate:"01-04-2026",
+                ActualStartDate:"",
+                PlannedEndDate:"31-08-2026",
+                ActualEndDate:"",
+                pic:"Sakthi"
+            },
+
+            {
+                id:4,
+                project:"NiSSIM",
+                kaizenName:"GD Request Portal",
+                status:"Planned",
+                description:"Portal for handling GD requests and approvals.",
+                PlannedStartDate:"",
+                ActualStartDate:"",
+                PlannedEndDate:"",
+                ActualEndDate:"",
+                pic:"Vinoth"
+            },
+
+            {
+                id:5,
+                project:"OneVal",
+                kaizenName:"Smart Guide",
+                status:"Planned",
+                description:`Interactive smart guide to reduce support dependency and improve user assistance.`,
+                PlannedStartDate:"",
+                ActualStartDate:"",
+                PlannedEndDate:"",
+                ActualEndDate:"",
+                pic:"Saravanan"
+            },
+
+            {
+                id:6,
+                project:"Others",
+                kaizenName:"Log Analyzer Tool",
+                status:"Completed",
+                description:`Analyze GD logs and generate unique login count frequency.`,
+                PlannedStartDate:"01-04-2026",
+                ActualStartDate:"01-04-2026",
+                PlannedEndDate:"01-04-2026",
+                ActualEndDate:"01-04-2026",
+                pic:"Saravanan"
+            },
+
+            {
+                id:7,
+                project:"Others",
+                kaizenName:"Matomo API Dashboard",
+                status:"Planned",
+                description:`Monthly and region-wise analytics dashboard using Matomo APIs.`,
+                PlannedStartDate:"",
+                ActualStartDate:"",
+                PlannedEndDate:"",
+                ActualEndDate:"",
+                pic:"Saravanan"
+            },
+
+            {
+                id:8,
+                project:"Others",
+                kaizenName:"FAQ Chat Bot",
+                status:"In Progress",
+                description:`Document-based chatbot for user manual assistance.`,
+                PlannedStartDate:"01-04-2026",
+                ActualStartDate:"",
+                PlannedEndDate:"TBD",
+                ActualEndDate:"",
+                pic:"Saravanan"
+            },
+
+            {
+                id:9,
+                project:"Others",
+                kaizenName:"Boilerplate Frameworks",
+                status:"Planned",
+                description:`Reusable Angular, Java, and Node.js templates with standard integrations.`,
+                PlannedStartDate:"01-01-2026",
+                ActualStartDate:"",
+                PlannedEndDate:"01-05-2026",
+                ActualEndDate:"",
+                pic:"Saravanan"
+            },
+
+            {
+                id:10,
+                project:"AWS",
+                kaizenName:"AWS Util Library",
+                status:"Planned",
+                description:`Common AWS utility library for retry logic, logging, and governance.`,
+                PlannedStartDate:"",
+                ActualStartDate:"",
+                PlannedEndDate:"",
+                ActualEndDate:"",
+                pic:""
+            },
+
+            {
+                id:11,
+                project:"Jira",
+                kaizenName:"Jira Automation",
+                status:"Planned",
+                description:`Automate sprint reports and reminder notifications through Jira automation.`,
+                PlannedStartDate:"",
+                ActualStartDate:"",
+                PlannedEndDate:"",
+                ActualEndDate:"",
+                pic:"Sinoj"
+            },
+
+            {
+                id:12,
+                project:"AI",
+                kaizenName:"AI-Based MOM Automation",
+                status:"Planned",
+                description:`AI-based system to generate MOM from meetings and track action items.`,
+                PlannedStartDate:"",
+                ActualStartDate:"",
+                PlannedEndDate:"",
+                ActualEndDate:"",
+                pic:"Sakthi"
+            },
+
+            {
+                id:13,
+                project:"AI",
+                kaizenName:"AI Cost Optimization Agent",
+                status:"Planned",
+                description:`Monitor AWS usage trends and suggest cloud cost optimization.`,
+                PlannedStartDate:"",
+                ActualStartDate:"",
+                PlannedEndDate:"",
+                ActualEndDate:"",
+                pic:"Sakthi"
+            },
+
+            {
+                id:14,
+                project:"AI",
+                kaizenName:"AI Code Review",
+                status:"Planned",
+                description:`AI-powered PR review to analyze code quality and detect risks.`,
+                PlannedStartDate:"",
+                ActualStartDate:"",
+                PlannedEndDate:"",
+                ActualEndDate:"",
+                pic:"Sakthi"
+            },
+
+            {
+                id:15,
+                project:"AI",
+                kaizenName:"AI-Based Change Impact Analysis",
+                status:"Planned",
+                description:`AI detects impacted modules and suggests regression scope.`,
+                PlannedStartDate:"",
+                ActualStartDate:"",
+                PlannedEndDate:"",
+                ActualEndDate:"",
+                pic:"Sakthi"
+            },
+
+            {
+                id:16,
+                project:"AI",
+                kaizenName:"AI Sprint Planning Assistant",
+                status:"Planned",
+                description:`AI assistant for sprint planning using velocity and leave analysis.`,
+                PlannedStartDate:"",
+                ActualStartDate:"",
+                PlannedEndDate:"",
+                ActualEndDate:"",
+                pic:"Sakthi"
+            },
+
+            {
+                id:17,
+                project:"AI",
+                kaizenName:"AI Interview Copilot",
+                status:"Planned",
+                description:`AI-based interview assistant for technical question generation.`,
+                PlannedStartDate:"",
+                ActualStartDate:"",
+                PlannedEndDate:"",
+                ActualEndDate:"",
+                pic:"Sakthi"
+            }
+
+        ];
+
+    </script>
+
+    <!-- KPI SECTION -->
+
+    <div class="row mb-4">
+
+        <div class="col-md-3 mb-3">
+            <div class="metric-card bg1">
+                <h2 id="totalIdeas"></h2>
+                <p>Total Kaizen Ideas</p>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-3">
+            <div class="metric-card bg2">
+                <h2 id="completedIdeas"></h2>
+                <p>Completed / Implemented</p>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-3">
+            <div class="metric-card bg3">
+                <h2 id="contributors"></h2>
+                <p>Total Contributors</p>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-3">
+            <div class="metric-card bg4">
+                <h2 id="topContributor"></h2>
+                <p>Top Contributor</p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- CHART -->
+
+    <div class="card-box">
+
+        <div class="section-title">
+            PIC Contribution Chart
+        </div>
+
+        <canvas id="kaizenChart"></canvas>
+
+    </div>
+
+    <!-- TABLE -->
+
+    <div class="card-box">
+
+        <div class="section-title">
+            Kaizen Ideas Repository
+        </div>
+
+        <div class="table-responsive">
+
+            <table class="table table-bordered table-hover">
+
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Project</th>
+                        <th>Kaizen Name</th>
+                        <th>Status</th>
+                        <th>Description</th>
+                        <th>Planned Start Date</th>
+                        <th>Planned End Date</th>
+                        <th>PIC</th>
+                    </tr>
+                </thead>
+
+                <tbody id="tableBody"></tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+<footer>
+    © 2026 Kaizen Dashboard
+</footer>
+
+<script>
+
+    // KPI Calculations
+
+    const totalIdeas = kaizenIdeas.length;
+
+    const completedIdeas = kaizenIdeas.filter(item =>
+        item.status === "Completed" ||
+        item.status === "Implemented"
+    ).length;
+
+    const picCounts = {};
+
+    kaizenIdeas.forEach(item => {
+
+        if(item.pic){
+
+            picCounts[item.pic] =
+                (picCounts[item.pic] || 0) + 1;
+        }
+
+    });
+
+    const topContributor =
+        Object.entries(picCounts)
+        .sort((a,b) => b[1]-a[1])[0];
+
+
+    // KPI UI
+
+    document.getElementById("totalIdeas").innerText =
+        totalIdeas;
+
+    document.getElementById("completedIdeas").innerText =
+        completedIdeas;
+
+    document.getElementById("contributors").innerText =
+        Object.keys(picCounts).length;
+
+    document.getElementById("topContributor").innerText =
+        topContributor[0];
+
+
+    // TABLE RENDERING
+
+    const tableBody =
+        document.getElementById("tableBody");
+
+    kaizenIdeas.forEach(item => {
+
+        let badgeClass = "bg-secondary";
+
+        if(item.status === "Completed" ||
+           item.status === "Implemented"){
+
+            badgeClass = "bg-success";
+        }
+
+        else if(item.status === "In Progress"){
+
+            badgeClass = "bg-warning text-dark";
+        }
+
+        else if(item.status === "Planned"){
+
+            badgeClass = "bg-primary";
+        }
+
+        tableBody.innerHTML += `
+
+            <tr>
+
+                <td>${item.id}</td>
+
+                <td>${item.project}</td>
+
+                <td>${item.kaizenName}</td>
+
+                <td>
+                    <span class="badge ${badgeClass}">
+                        ${item.status}
+                    </span>
+                </td>
+
+                <td class="description">
+                    ${item.description}
+                </td>
+
+                <td>${item.PlannedStartDate || "-"}</td>
+
+                <td>${item.PlannedEndDate || "-"}</td>
+
+                <td>${item.pic || "-"}</td>
+
+            </tr>
+
+        `;
+    });
+
+
+    // CHART
+
+    const ctx =
+        document.getElementById('kaizenChart');
+
+    new Chart(ctx, {
+
+        type: 'bar',
+
+        data: {
+
+            labels: Object.keys(picCounts),
+
+            datasets: [{
+
+                label: 'Kaizen Ideas',
+
+                data: Object.values(picCounts),
+
+                backgroundColor: '#0077b6',
+
+                borderRadius: 6
+
+            }]
+        },
+
+        options: {
+
+            responsive: true,
+
+            plugins: {
+
+                legend: {
+
+                    display: false
+                }
+            },
+
+            scales: {
+
+                y: {
+
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+
+</script>
+
+</body>
+</html>
