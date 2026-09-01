@@ -5,9 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Kaizen & AI Innovation Intelligence Dashboard</title>
   
+  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- PapaParse for CSV parsing -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <!-- Phosphor Icons -->
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
   <style>
@@ -22,6 +26,7 @@
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen">
 
+  <!-- TOP NAVIGATION / HEADER -->
   <header class="bg-slate-900 text-white sticky top-0 z-50 border-b border-slate-800 px-6 py-4">
     <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
       <div>
@@ -32,21 +37,40 @@
         <p class="text-xs text-slate-400">Enterprise Kaizen Tracking & AI Synergy Dashboard</p>
       </div>
 
+      <!-- FILE UPLOAD ZONE -->
       <div class="flex items-center gap-3">
         <label class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold py-2 px-4 rounded-lg cursor-pointer transition shadow-sm">
           <i class="ph ph-upload-simple text-base"></i>
-          <span>Upload CSV Data</span>
+          <span>Upload CSV File</span>
           <input type="file" id="csvFileInput" accept=".csv, .txt" class="hidden" />
         </label>
-        <button id="resetDataBtn" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 px-3 rounded-lg border border-slate-700 transition">
-          Reload Sample Data
+        <button id="clearDataBtn" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 px-3 rounded-lg border border-slate-700 transition">
+          Clear Data
         </button>
       </div>
     </div>
   </header>
 
+  <!-- MAIN CONTAINER -->
   <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
 
+    <!-- EMPTY STATE HERO (Visible before data is uploaded) -->
+    <div id="emptyStateBanner" class="glass-card rounded-xl p-8 text-center border-dashed border-2 border-indigo-200 bg-indigo-50/30">
+      <div class="inline-flex p-3 bg-indigo-100 text-indigo-600 rounded-full mb-3">
+        <i class="ph ph-file-arrow-up text-3xl"></i>
+      </div>
+      <h2 class="text-base font-bold text-slate-800">No Data Loaded Yet</h2>
+      <p class="text-xs text-slate-500 max-w-md mx-auto mt-1 mb-4">
+        Please upload your CSV file containing the Kaizen and AI initiative records to populate the KPIs, visuals, analysis, and table.
+      </p>
+      <label class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold py-2 px-4 rounded-lg cursor-pointer transition shadow-sm">
+        <i class="ph ph-upload-simple text-base"></i>
+        <span>Select CSV File</span>
+        <input type="file" id="bannerFileInput" accept=".csv, .txt" class="hidden" />
+      </label>
+    </div>
+
+    <!-- SLICERS / FILTERS SECTION -->
     <section class="glass-card rounded-xl p-5">
       <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
         <div class="flex items-center gap-2 text-slate-700 font-semibold text-sm">
@@ -57,6 +81,7 @@
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+        <!-- Filter 1: AI Involvement -->
         <div>
           <label class="block text-xs font-medium text-slate-500 mb-1">AI Involvement</label>
           <select id="filterAI" class="w-full bg-slate-50 border border-slate-300 text-slate-700 text-xs rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
@@ -66,6 +91,7 @@
           </select>
         </div>
 
+        <!-- Filter 2: Status -->
         <div>
           <label class="block text-xs font-medium text-slate-500 mb-1">Current Status</label>
           <select id="filterStatus" class="w-full bg-slate-50 border border-slate-300 text-slate-700 text-xs rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
@@ -73,6 +99,7 @@
           </select>
         </div>
 
+        <!-- Filter 3: Proposer -->
         <div>
           <label class="block text-xs font-medium text-slate-500 mb-1">Proposer</label>
           <select id="filterProposer" class="w-full bg-slate-50 border border-slate-300 text-slate-700 text-xs rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
@@ -80,6 +107,7 @@
           </select>
         </div>
 
+        <!-- Filter 4: Keyword Search -->
         <div>
           <label class="block text-xs font-medium text-slate-500 mb-1">Search Keywords</label>
           <input type="text" id="searchInput" placeholder="Search task, tech, tools..." class="w-full bg-slate-50 border border-slate-300 text-slate-700 text-xs rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
@@ -87,6 +115,7 @@
       </div>
     </section>
 
+    <!-- 5 KEY PERFORMANCE INDICATORS (KPIs) -->
     <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
       <div class="glass-card rounded-xl p-4 flex items-center gap-4">
         <div class="p-3 bg-blue-50 text-blue-600 rounded-lg">
@@ -139,7 +168,9 @@
       </div>
     </section>
 
+    <!-- 5 ADVANCED VISUALIZATIONS -->
     <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Visual 1: AI Integration Split -->
       <div class="glass-card rounded-xl p-5 flex flex-col justify-between">
         <h4 class="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
           <i class="ph ph-chart-pie-slice text-indigo-500"></i> AI vs. Non-AI Initiatives
@@ -149,6 +180,7 @@
         </div>
       </div>
 
+      <!-- Visual 2: Status Breakdown -->
       <div class="glass-card rounded-xl p-5 flex flex-col justify-between">
         <h4 class="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
           <i class="ph ph-chart-bar text-indigo-500"></i> Delivery Status Breakdown
@@ -158,6 +190,7 @@
         </div>
       </div>
 
+      <!-- Visual 3: AI Platform Usage -->
       <div class="glass-card rounded-xl p-5 flex flex-col justify-between">
         <h4 class="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
           <i class="ph ph-cube text-indigo-500"></i> AI Platform Usage
@@ -167,15 +200,17 @@
         </div>
       </div>
 
+      <!-- Visual 4: Tech Stack Dominance (Spans 2 cols) -->
       <div class="glass-card rounded-xl p-5 lg:col-span-2">
         <h4 class="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-          <i class="ph ph-stack text-indigo-500"></i> Top Technologies & Tools Applied
+          <i class="ph ph-stack text-indigo-500"></i> Top Technologies Applied
         </h4>
         <div class="relative h-[250px]">
           <canvas id="chartTech"></canvas>
         </div>
       </div>
 
+      <!-- Visual 5: Timeline / Milestone Trajectory -->
       <div class="glass-card rounded-xl p-5">
         <h4 class="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
           <i class="ph ph-calendar-check text-indigo-500"></i> Planned Deadlines Timeline
@@ -186,15 +221,18 @@
       </div>
     </section>
 
+    <!-- DEEP ANALYSIS ENGINE -->
     <section class="glass-card rounded-xl p-6 border-l-4 border-indigo-600">
       <div class="flex items-center gap-2 text-slate-800 font-bold mb-4">
         <i class="ph ph-brain text-xl text-indigo-600"></i>
         <h3 class="text-base">Deep Analysis & Strategic Recommendations</h3>
       </div>
       <div id="deepAnalysisContent" class="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs leading-relaxed text-slate-600">
-        </div>
+        <!-- Dynamically rendered -->
+      </div>
     </section>
 
+    <!-- DETAILED DATA EXPLORER / TABLE -->
     <section class="glass-card rounded-xl p-5">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-sm font-bold text-slate-700 flex items-center gap-2">
@@ -216,7 +254,8 @@
             </tr>
           </thead>
           <tbody id="tableBody" class="divide-y divide-slate-100">
-            </tbody>
+            <!-- Dynamically populated -->
+          </tbody>
         </table>
       </div>
     </section>
@@ -224,47 +263,34 @@
   </main>
 
   <script>
-    // Initial baseline mock data matching schema
-    const INITIAL_DATA = [
-      { "Serial #": "KZ-001", "Proposer": "Alex Chen", "Project Name": "Billing Automation", "KAIZEN Task": "Automate invoice reconciliation", "Technology used": "Python", "AI Involvement(Yes/No)": "Yes", "Type of AI": "Generative AI", "AI Platform Used": "OpenAI API", "Source": "Finance Team", "Current Status": "Completed", "Planned End Date": "2026-02-15", "Developed by": "Dev Squad A", "Tool Used": "VS Code" },
-      { "Serial #": "KZ-002", "Proposer": "Maria Garcia", "Project Name": "Defect Triage", "KAIZEN Task": "Root cause classification", "Technology used": "SQL / Python", "AI Involvement(Yes/No)": "Yes", "Type of AI": "Machine Learning", "AI Platform Used": "Azure ML", "Source": "Quality Assurance", "Current Status": "In Progress", "Planned End Date": "2026-03-30", "Developed by": "Dev Squad B", "Tool Used": "Jupyter" },
-      { "Serial #": "KZ-003", "Proposer": "Liam Smith", "Project Name": "CI/CD Pipeline Tune", "KAIZEN Task": "Reduce build cache overhead", "Technology used": "Docker / Bash", "AI Involvement(Yes/No)": "No", "Type of AI": "N/A", "AI Platform Used": "N/A", "Source": "DevOps", "Current Status": "Completed", "Planned End Date": "2026-01-20", "Developed by": "Liam Smith", "Tool Used": "GitHub Actions" },
-      { "Serial #": "KZ-004", "Proposer": "Priya Sharma", "Project Name": "Customer Routing", "KAIZEN Task": "Intent recognition for tickets", "Technology used": "Node.js", "AI Involvement(Yes/No)": "Yes", "Type of AI": "NLP", "AI Platform Used": "Vertex AI", "Source": "Support Org", "Current Status": "Delayed", "Planned End Date": "2026-02-01", "Developed by": "External Vendor", "Tool Used": "Postman" },
-      { "Serial #": "KZ-005", "Proposer": "Alex Chen", "Project Name": "Doc Query Engine", "KAIZEN Task": "Semantic search over specs", "Technology used": "Python / React", "AI Involvement(Yes/No)": "Yes", "Type of AI": "Generative AI", "AI Platform Used": "OpenAI API", "Source": "Engineering", "Current Status": "In Progress", "Planned End Date": "2026-04-10", "Developed by": "Alex Chen", "Tool Used": "Cursor" },
-      { "Serial #": "KZ-006", "Proposer": "John Doe", "Project Name": "Excel Macro Reduction", "KAIZEN Task": "VBA to Web API transition", "Technology used": "C# / .NET", "AI Involvement(Yes/No)": "No", "Type of AI": "N/A", "AI Platform Used": "N/A", "Source": "Operations", "Current Status": "In Progress", "Planned End Date": "2026-05-15", "Developed by": "Core Team", "Tool Used": "Visual Studio" }
-    ];
-
-    let dataset = [...INITIAL_DATA];
+    let dataset = [];
     let chartInstances = {};
 
-    // Standardize row schema in case uploaded CSV headers contain spaces or slight variations
     function cleanKeys(data) {
       return data.map(item => {
         let cleaned = {};
         for (let k in item) {
-          let trimmedKey = k.trim();
-          cleaned[trimmedKey] = item[k] ? item[k].toString().trim() : '';
+          let trimmedKey = k ? k.trim() : '';
+          cleaned[trimmedKey] = item[k] !== undefined && item[k] !== null ? item[k].toString().trim() : '';
         }
         return cleaned;
       });
     }
 
-    // Initialize Dashboard
     document.addEventListener("DOMContentLoaded", () => {
       initFilters();
       renderDashboard();
 
-      // Listeners
       document.getElementById('filterAI').addEventListener('change', renderDashboard);
       document.getElementById('filterStatus').addEventListener('change', renderDashboard);
       document.getElementById('filterProposer').addEventListener('change', renderDashboard);
       document.getElementById('searchInput').addEventListener('input', renderDashboard);
       document.getElementById('clearFiltersBtn').addEventListener('click', resetFilters);
 
-      // Upload Handler
       document.getElementById('csvFileInput').addEventListener('change', handleFileUpload);
-      document.getElementById('resetDataBtn').addEventListener('click', () => {
-        dataset = [...INITIAL_DATA];
+      document.getElementById('bannerFileInput').addEventListener('change', handleFileUpload);
+      document.getElementById('clearDataBtn').addEventListener('click', () => {
+        dataset = [];
         initFilters();
         renderDashboard();
       });
@@ -323,13 +349,20 @@
 
     function renderDashboard() {
       const data = getFilteredData();
+      
+      const banner = document.getElementById('emptyStateBanner');
+      if (dataset.length === 0) {
+        banner.classList.remove('hidden');
+      } else {
+        banner.classList.add('hidden');
+      }
+
       renderKPIs(data);
       renderCharts(data);
       renderDeepAnalysis(data);
       renderTable(data);
     }
 
-    /* --- KPIs --- */
     function renderKPIs(data) {
       const total = data.length;
       const aiCount = data.filter(d => (d["AI Involvement(Yes/No)"] || '').toLowerCase() === 'yes').length;
@@ -350,7 +383,6 @@
       document.getElementById('kpiOverdue').innerText = overdue;
     }
 
-    /* --- CHARTS --- */
     function renderCharts(data) {
       // 1. AI Doughnut
       const aiYes = data.filter(d => (d["AI Involvement(Yes/No)"] || '').toLowerCase() === 'yes').length;
@@ -358,7 +390,7 @@
       createChart('chartAISplit', 'doughnut', {
         labels: ['AI Enabled', 'Non-AI Traditional'],
         datasets: [{
-          data: [aiYes, aiNo],
+          data: data.length ? [aiYes, aiNo] : [0, 0],
           backgroundColor: ['#6366f1', '#cbd5e1']
         }]
       }, { cutout: '70%' });
@@ -366,18 +398,19 @@
       // 2. Status Bar Chart
       const statusCounts = countOccurrences(data, "Current Status");
       createChart('chartStatus', 'bar', {
-        labels: Object.keys(statusCounts),
+        labels: Object.keys(statusCounts).length ? Object.keys(statusCounts) : ['No Data'],
         datasets: [{
           label: 'Count',
-          data: Object.values(statusCounts),
+          data: Object.keys(statusCounts).length ? Object.values(statusCounts) : [0],
           backgroundColor: '#38bdf8'
         }]
       }, { plugins: { legend: { display: false } } });
 
       // 3. AI Platform Distribution Radar
-      const platformCounts = countOccurrences(data.filter(d => d["AI Platform Used"] && d["AI Platform Used"] !== 'N/A'), "AI Platform Used");
+      const filteredAIPlatforms = data.filter(d => d["AI Platform Used"] && d["AI Platform Used"].toUpperCase() !== 'N/A' && d["AI Platform Used"] !== '');
+      const platformCounts = countOccurrences(filteredAIPlatforms, "AI Platform Used");
       createChart('chartAIPlatform', 'radar', {
-        labels: Object.keys(platformCounts).length ? Object.keys(platformCounts) : ['No Data'],
+        labels: Object.keys(platformCounts).length ? Object.keys(platformCounts) : ['No Platforms'],
         datasets: [{
           label: 'Platform Usage',
           data: Object.keys(platformCounts).length ? Object.values(platformCounts) : [0],
@@ -387,25 +420,25 @@
         }]
       });
 
-      // 4. Technology Stack (Horizontal Bar)
+      // 4. Technology Stack
       const techCounts = countOccurrences(data, "Technology used");
       createChart('chartTech', 'bar', {
-        labels: Object.keys(techCounts),
+        labels: Object.keys(techCounts).length ? Object.keys(techCounts) : ['No Data'],
         datasets: [{
           label: 'Technologies',
-          data: Object.values(techCounts),
+          data: Object.keys(techCounts).length ? Object.values(techCounts) : [0],
           backgroundColor: '#818cf8'
         }]
       }, { indexAxis: 'y', plugins: { legend: { display: false } } });
 
       // 5. Timeline Delivery Trajectory
       const timelineCounts = countOccurrences(data, "Planned End Date");
-      const sortedDates = Object.keys(timelineCounts).sort();
+      const sortedDates = Object.keys(timelineCounts).filter(d => d && d !== 'Unassigned').sort();
       createChart('chartTimeline', 'line', {
-        labels: sortedDates,
+        labels: sortedDates.length ? sortedDates : ['No Milestones'],
         datasets: [{
           label: 'Milestones Due',
-          data: sortedDates.map(d => timelineCounts[d]),
+          data: sortedDates.length ? sortedDates.map(d => timelineCounts[d]) : [0],
           borderColor: '#10b981',
           backgroundColor: 'rgba(16, 185, 129, 0.1)',
           fill: true,
@@ -433,11 +466,10 @@
       });
     }
 
-    /* --- DEEP ANALYSIS ENGINE --- */
     function renderDeepAnalysis(data) {
       const container = document.getElementById('deepAnalysisContent');
       if (!data.length) {
-        container.innerHTML = `<p class="col-span-3 text-slate-400">No data points available for the selected filters.</p>`;
+        container.innerHTML = `<p class="col-span-3 text-slate-400">Upload a dataset to generate automated AI & delivery insights.</p>`;
         return;
       }
 
@@ -454,25 +486,29 @@
       container.innerHTML = `
         <div class="space-y-1">
           <h5 class="font-bold text-slate-800 flex items-center gap-1.5"><i class="ph ph-lightning text-amber-500"></i> AI Synergy & Modernization</h5>
-          <p>Current portfolio shows <strong>${aiAdoption}% AI penetration</strong>. Initiatives integrating AI tools (e.g., GenAI/LLMs) are predominantly focused on process automation and defect reduction.</p>
+          <p>Current portfolio shows <strong>${aiAdoption}% AI penetration</strong> across active tasks.</p>
         </div>
         <div class="space-y-1">
           <h5 class="font-bold text-slate-800 flex items-center gap-1.5"><i class="ph ph-trend-up text-emerald-500"></i> Delivery & Throughput</h5>
-          <p><strong>${completedRate}%</strong> of targeted Kaizens have achieved completion. Focus should be applied to projects in the 'In Progress' bottleneck to ensure timeline adherence.</p>
+          <p><strong>${completedRate}%</strong> of targeted Kaizens have been completed based on current filters.</p>
         </div>
         <div class="space-y-1">
-          <h5 class="font-bold text-slate-800 flex items-center gap-1.5"><i class="ph ph-cpu text-indigo-500"></i> Tech & Tool Concentration</h5>
-          <p>Dominant tech ecosystem: <strong>${topTech}</strong>. Standardizing reusable templates around this stack will accelerate execution cycles across squads.</p>
+          <h5 class="font-bold text-slate-800 flex items-center gap-1.5"><i class="ph ph-cpu text-indigo-500"></i> Primary Tech Focus</h5>
+          <p>Dominant tech ecosystem: <strong>${topTech}</strong>.</p>
         </div>
       `;
     }
 
-    /* --- DATA TABLE --- */
     function renderTable(data) {
       const tbody = document.getElementById('tableBody');
       const countEl = document.getElementById('recordCount');
       tbody.innerHTML = '';
       countEl.innerText = `Showing ${data.length} records`;
+
+      if (!data.length) {
+        tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400">No records found. Please upload a CSV.</td></tr>`;
+        return;
+      }
 
       data.forEach(row => {
         const isAI = (row["AI Involvement(Yes/No)"] || '').toLowerCase() === 'yes';
@@ -515,13 +551,14 @@
 
     function countOccurrences(arr, key) {
       return arr.reduce((acc, obj) => {
-        const val = obj[key] || 'Unassigned';
-        acc[val] = (acc[val] || 0) + 1;
+        const val = obj[key] ? obj[key].trim() : 'Unassigned';
+        if (val) {
+          acc[val] = (acc[val] || 0) + 1;
+        }
         return acc;
       }, {});
     }
 
-    /* --- FILE UPLOAD PROCESSING --- */
     function handleFileUpload(e) {
       const file = e.target.files[0];
       if (!file) return;
@@ -535,7 +572,7 @@
             initFilters();
             renderDashboard();
           } else {
-            alert('File parsing failed or file is empty.');
+            alert('File parsing failed or the file is empty.');
           }
         },
         error: function(err) {
