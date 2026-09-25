@@ -1,0 +1,747 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KCF Tracking Dashboard</title>
+    
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js for data visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- PapaParse for parsing the uploaded CSV file -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        primary: '#3b82f6', // blue-500
+                        secondary: '#10b981', // emerald-500
+                        dark: '#0f172a', // slate-900
+                        panel: '#1e293b', // slate-800
+                        accent: '#8b5cf6' // violet-500
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #0f172a; 
+            color: #f8fafc; 
+            overflow-x: hidden; 
+        }
+        
+        /* Custom Scrollbar for a premium look */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #1e293b; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        
+        /* Glassmorphism Card Styling */
+        .glass-card { 
+            background: #1e293b; 
+            border: 1px solid #334155;
+            border-radius: 0.75rem; 
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3); 
+            padding: 1.5rem; 
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease;
+        }
+        .glass-card:hover { 
+            transform: translateY(-2px); 
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.3);
+        }
+        
+        .chart-container { position: relative; height: 300px; width: 100%; }
+        
+        /* Loading Animation */
+        .loader {
+            border: 3px solid #334155;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col custom-scrollbar">
+
+    <header class="bg-panel border-b border-slate-700 p-4 shadow-lg z-20 sticky top-0">
+        <div class="max-w-[1500px] mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <svg class="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                <h1 class="text-2xl font-bold tracking-tight text-white">KCF Tracker Pro</h1>
+            </div>
+            
+            <div class="flex items-center gap-3 bg-slate-900 rounded-lg p-1.5 border border-slate-600">
+                <label for="csv-upload" class="cursor-pointer text-sm font-semibold px-5 py-2 bg-primary hover:bg-blue-600 rounded shadow transition-colors text-white flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                    Upload CSV Data
+                </label>
+                <input type="file" id="csv-upload" accept=".csv" class="hidden" onchange="handleFileUpload(event)">
+                <span id="file-name" class="text-xs text-slate-400 max-w-[200px] truncate pr-3 font-medium">No file chosen</span>
+            </div>
+        </div>
+        <!-- Error Message Container -->
+        <div id="upload-error" class="hidden max-w-[1500px] mx-auto mt-3 text-red-400 text-sm font-medium text-center bg-red-900/20 p-2.5 rounded border border-red-800"></div>
+    </header>
+
+    <div id="empty-state" class="flex-1 flex flex-col items-center justify-center p-8 text-center bg-slate-900">
+        <div class="animate-bounce mb-6">
+            <div class="bg-slate-800 p-6 rounded-full shadow-lg border border-slate-700">
+                <svg class="w-20 h-20 text-slate-400 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+            </div>
+        </div>
+        <h2 class="text-3xl font-bold text-slate-200 mb-3">Welcome to KCF Project Tracker</h2>
+        <p class="text-slate-400 max-w-lg text-lg leading-relaxed">
+            Please upload your project tracking CSV to visualize the data. <br>
+            <span class="text-sm mt-2 block text-slate-500">Expected columns: Sl No, Dept, TOFEE_ID, Project, Manager, KCF_PIC, DEV_PIC, AMO_PIC, SaaS_Migrated, Confluence_Complete_Percent</span>
+        </p>
+    </div>
+
+    <main id="dashboard-view" class="hidden flex-1 max-w-[1500px] mx-auto w-full p-4 md:p-6 space-y-6">
+        
+        <!-- Top Section: Filters & Insights -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <div class="glass-card lg:col-span-2">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold text-slate-200 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+                        Data Slicers
+                    </h2>
+                    <button onclick="resetFilters()" class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1 rounded transition-colors">Reset</button>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Department</label>
+                        <select id="filter-dept" class="w-full rounded-md border-slate-600 bg-slate-900 text-white shadow-sm focus:border-primary focus:ring-primary text-sm p-2.5 border outline-none cursor-pointer" onchange="applyFilters()">
+                            <option value="All">All Departments</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Manager</label>
+                        <select id="filter-manager" class="w-full rounded-md border-slate-600 bg-slate-900 text-white shadow-sm focus:border-primary focus:ring-primary text-sm p-2.5 border outline-none cursor-pointer" onchange="applyFilters()">
+                            <option value="All">All Managers</option>
+                        </select>
+                    </div>
+                    <!-- Requested KCF_PIC Slicer -->
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1 text-secondary">KCF_PIC</label>
+                        <select id="filter-kcf" class="w-full rounded-md border-emerald-600/50 bg-slate-900 text-white shadow-sm focus:border-secondary focus:ring-secondary text-sm p-2.5 border outline-none cursor-pointer" onchange="applyFilters()">
+                            <option value="All">All KCF_PICs</option>
+                        </select>
+                    </div>
+                    <!-- Requested SaaS_Migrated Slicer -->
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1 text-accent">SaaS Migrated</label>
+                        <select id="filter-saas" class="w-full rounded-md border-violet-600/50 bg-slate-900 text-white shadow-sm focus:border-accent focus:ring-accent text-sm p-2.5 border outline-none cursor-pointer" onchange="applyFilters()">
+                            <option value="All">All Statuses</option>
+                            <option value="Yes">Yes / True</option>
+                            <option value="No">No / False</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Deep Analysis Section -->
+            <div class="glass-card bg-gradient-to-br from-slate-800 to-slate-900 border-primary/30 border-l-4 flex flex-col">
+                <h2 class="text-lg font-semibold mb-3 text-white flex items-center gap-2">
+                    <svg class="w-5 h-5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    Deep Analysis
+                </h2>
+                <div id="insights-panel" class="text-sm text-slate-300 leading-relaxed space-y-3 flex-1 overflow-y-auto custom-scrollbar pr-2">
+                    <div class="flex items-center justify-center h-full text-slate-500">Waiting for data analysis...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5 KPIs Section -->
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div class="glass-card p-4 border-t-2 border-blue-500 flex flex-col justify-center items-center text-center relative overflow-hidden group">
+                <div class="absolute inset-0 bg-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <p class="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1">Total Projects</p>
+                <p id="kpi-projects" class="text-3xl font-bold text-white z-10">0</p>
+            </div>
+            <div class="glass-card p-4 border-t-2 border-purple-500 flex flex-col justify-center items-center text-center relative overflow-hidden group">
+                <div class="absolute inset-0 bg-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <p class="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1">Distinct Depts</p>
+                <p id="kpi-depts" class="text-3xl font-bold text-white z-10">0</p>
+            </div>
+            <div class="glass-card p-4 border-t-2 border-pink-500 flex flex-col justify-center items-center text-center relative overflow-hidden group">
+                <div class="absolute inset-0 bg-pink-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <p class="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1">Managers</p>
+                <p id="kpi-managers" class="text-3xl font-bold text-white z-10">0</p>
+            </div>
+            <div class="glass-card p-4 border-t-2 border-emerald-500 flex flex-col justify-center items-center text-center relative overflow-hidden group">
+                <div class="absolute inset-0 bg-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <p class="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1">SaaS Migrated</p>
+                <p id="kpi-saas" class="text-3xl font-bold text-white z-10">0</p>
+            </div>
+            <div class="glass-card p-4 border-t-2 border-amber-500 col-span-2 md:col-span-1 flex flex-col justify-center items-center text-center relative overflow-hidden group">
+                <div class="absolute inset-0 bg-amber-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <p class="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1">Avg Confluence</p>
+                <p id="kpi-confluence" class="text-3xl font-bold text-white z-10">0%</p>
+            </div>
+        </div>
+
+        <!-- Charts - Row 1 (2 Charts) -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="glass-card">
+                <h3 class="text-sm font-semibold text-slate-300 mb-4 text-center">Projects by Department</h3>
+                <div class="chart-container"><canvas id="chart-dept-projects"></canvas></div>
+            </div>
+            <div class="glass-card">
+                <h3 class="text-sm font-semibold text-slate-300 mb-4 text-center text-primary">Avg Confluence % by Department</h3>
+                <div class="chart-container"><canvas id="chart-avg-conf-dept"></canvas></div>
+            </div>
+        </div>
+
+        <!-- Charts - Row 2 (3 Charts) -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="glass-card">
+                <h3 class="text-sm font-semibold text-slate-300 mb-4 text-center">SaaS Migration Status</h3>
+                <div class="chart-container flex justify-center"><canvas id="chart-saas-status"></canvas></div>
+            </div>
+            <div class="glass-card">
+                <h3 class="text-sm font-semibold text-slate-300 mb-4 text-center">Top KCF_PIC Workload</h3>
+                <div class="chart-container"><canvas id="chart-kcf"></canvas></div>
+            </div>
+            <div class="glass-card">
+                <h3 class="text-sm font-semibold text-slate-300 mb-4 text-center">Confluence Completion % Dist.</h3>
+                <div class="chart-container"><canvas id="chart-distribution"></canvas></div>
+            </div>
+        </div>
+
+        <!-- Detailed Data Table -->
+        <div class="glass-card overflow-hidden flex flex-col h-[600px]">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+                    <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                    Filtered Project Records
+                </h2>
+                <span id="record-count" class="text-xs bg-primary/20 text-blue-300 border border-blue-500/30 px-3 py-1.5 rounded-full font-medium"></span>
+            </div>
+            <div class="overflow-x-auto overflow-y-auto custom-scrollbar flex-1 rounded-lg border border-slate-700 bg-slate-900/50">
+                <table class="min-w-full divide-y divide-slate-700 text-sm">
+                    <thead class="bg-slate-800 sticky top-0 z-10 shadow-md">
+                        <tr>
+                            <th scope="col" class="px-4 py-3.5 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider">Sl No</th>
+                            <th scope="col" class="px-4 py-3.5 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider">Dept</th>
+                            <th scope="col" class="px-4 py-3.5 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider">TOFEE_ID</th>
+                            <th scope="col" class="px-4 py-3.5 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider">Project</th>
+                            <th scope="col" class="px-4 py-3.5 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider">Manager</th>
+                            <th scope="col" class="px-4 py-3.5 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider bg-slate-700/50">KCF_PIC</th>
+                            <th scope="col" class="px-4 py-3.5 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider">DEV_PIC</th>
+                            <th scope="col" class="px-4 py-3.5 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider">AMO_PIC</th>
+                            <th scope="col" class="px-4 py-3.5 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider">SaaS Migrated</th>
+                            <th scope="col" class="px-4 py-3.5 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider">Confluence %</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body" class="divide-y divide-slate-800 whitespace-nowrap text-slate-300">
+                        <!-- Dynamic Rows injected via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // Global State Management
+        let rawData = [];
+        let filteredData = [];
+        
+        // Chart Instances Tracker
+        const charts = {
+            deptProjects: null,
+            saasStatus: null,
+            kcfWorkload: null,
+            avgConfDept: null, // Replaces managers chart
+            distribution: null
+        };
+
+        // Chart.js Global Settings for Dark Theme Compatibility
+        Chart.defaults.font.family = "'Inter', sans-serif";
+        Chart.defaults.color = '#94a3b8'; // slate-400
+        Chart.defaults.scale.grid.color = '#334155'; // slate-700
+        Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(15, 23, 42, 0.9)';
+        Chart.defaults.plugins.tooltip.titleColor = '#f8fafc';
+        Chart.defaults.plugins.tooltip.bodyColor = '#cbd5e1';
+        Chart.defaults.plugins.tooltip.borderColor = '#475569';
+        Chart.defaults.plugins.tooltip.borderWidth = 1;
+        Chart.defaults.plugins.tooltip.padding = 10;
+        Chart.defaults.plugins.tooltip.cornerRadius = 8;
+
+        const colors = {
+            blue: '#3b82f6', green: '#10b981', purple: '#8b5cf6',
+            orange: '#f59e0b', pink: '#ec4899', teal: '#14b8a6',
+            indigo: '#6366f1', red: '#ef4444'
+        };
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            const errorDiv = document.getElementById('upload-error');
+            errorDiv.classList.add('hidden');
+            errorDiv.innerText = '';
+
+            if (!file) return;
+
+            document.getElementById('file-name').innerText = file.name;
+            
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: 'greedy',
+                dynamicTyping: true,
+                complete: function(results) {
+                    const data = results.data;
+                    
+                    if (!data || data.length === 0) {
+                        showError("The uploaded CSV file is empty. Please upload a valid dataset.");
+                        return;
+                    }
+
+                    // Strict Expected Headers based on requirement
+                    const requiredHeaders = ["Sl No", "Dept", "TOFEE_ID", "Project", "Manager", "KCF_PIC", "DEV_PIC", "AMO_PIC", "SaaS_Migrated", "Confluence_Complete_Percent"];
+                    const actualHeaders = Object.keys(data[0]).map(h => h.trim());
+                    
+                    // Allow loose matching for critical columns to prevent hard failures on slight spacing typos
+                    const critical = ["Dept", "Project", "KCF_PIC", "SaaS_Migrated", "Confluence_Complete_Percent"];
+                    const missingCritical = critical.filter(h => !actualHeaders.some(actual => actual.toLowerCase() === h.toLowerCase()));
+                    
+                    if(missingCritical.length > 0) {
+                        showError(`Missing critical columns: ${missingCritical.join(', ')}. Please ensure exact header names.`);
+                        return;
+                    }
+
+                    // Clean and map data accurately
+                    rawData = data.map(row => {
+                        let cleanRow = {};
+                        requiredHeaders.forEach(reqKey => {
+                            // Find matching header regardless of casing
+                            const actualKey = actualHeaders.find(k => k.toLowerCase() === reqKey.toLowerCase()) || reqKey;
+                            let val = row[actualKey];
+                            if (val === null || val === undefined) val = '';
+                            if (typeof val === 'string') val = val.trim();
+                            cleanRow[reqKey] = val;
+                        });
+                        return cleanRow;
+                    });
+
+                    initDashboard();
+                },
+                error: function(error) {
+                    showError("Error parsing CSV: " + error.message);
+                }
+            });
+        }
+
+        function showError(msg) {
+            const errorDiv = document.getElementById('upload-error');
+            errorDiv.innerText = msg;
+            errorDiv.classList.remove('hidden');
+            document.getElementById('empty-state').classList.remove('hidden');
+            document.getElementById('dashboard-view').classList.add('hidden');
+        }
+
+        function initDashboard() {
+            document.getElementById('empty-state').classList.add('hidden');
+            document.getElementById('dashboard-view').classList.remove('hidden');
+            populateFilters();
+            applyFilters(); // Initial render with full data
+        }
+
+        function populateFilters() {
+            const depts = new Set();
+            const managers = new Set();
+            const kcfPics = new Set();
+
+            rawData.forEach(row => {
+                if(row.Dept) depts.add(row.Dept);
+                if(row.Manager) managers.add(row.Manager);
+                if(row.KCF_PIC) kcfPics.add(row.KCF_PIC);
+            });
+
+            appendOptions('filter-dept', Array.from(depts).sort());
+            appendOptions('filter-manager', Array.from(managers).sort());
+            appendOptions('filter-kcf', Array.from(kcfPics).sort());
+            
+            resetFilters(false);
+        }
+
+        function appendOptions(elementId, values) {
+            const select = document.getElementById(elementId);
+            // Keep the first "All" option
+            while(select.options.length > 1) { select.remove(1); }
+            values.forEach(val => {
+                if(val && val.trim() !== '') {
+                    const opt = document.createElement('option');
+                    opt.value = val;
+                    opt.textContent = val;
+                    select.appendChild(opt);
+                }
+            });
+        }
+
+        function resetFilters(triggerUpdate = true) {
+            document.getElementById('filter-dept').value = 'All';
+            document.getElementById('filter-manager').value = 'All';
+            document.getElementById('filter-kcf').value = 'All';
+            document.getElementById('filter-saas').value = 'All';
+            if(triggerUpdate) applyFilters();
+        }
+
+        function applyFilters() {
+            const deptF = document.getElementById('filter-dept').value;
+            const mgrF = document.getElementById('filter-manager').value;
+            const kcfF = document.getElementById('filter-kcf').value;
+            const saasF = document.getElementById('filter-saas').value;
+
+            filteredData = rawData.filter(row => {
+                const matchDept = deptF === 'All' || row.Dept === deptF;
+                const matchMgr = mgrF === 'All' || row.Manager === mgrF;
+                const matchKcf = kcfF === 'All' || row.KCF_PIC === kcfF;
+                
+                let matchSaas = true;
+                if(saasF !== 'All') {
+                    const saasVal = String(row.SaaS_Migrated).trim().toLowerCase();
+                    const isYes = ['yes', 'true', '1', 'done'].includes(saasVal);
+                    matchSaas = (saasF === 'Yes' && isYes) || (saasF === 'No' && !isYes);
+                }
+
+                return matchDept && matchMgr && matchKcf && matchSaas;
+            });
+
+            updateUI();
+        }
+
+        function updateUI() {
+            updateKPIs();
+            renderTable();
+            updateInsights();
+            drawCharts();
+        }
+
+        function updateKPIs() {
+            const totalProj = filteredData.length;
+            const uniqueDepts = new Set(filteredData.filter(d=>d.Dept).map(d => d.Dept)).size;
+            const uniqueMgrs = new Set(filteredData.filter(d=>d.Manager).map(d => d.Manager)).size;
+            
+            // Count positive SaaS migration markers
+            let saasYesCount = filteredData.filter(d => {
+                let s = String(d.SaaS_Migrated).trim().toLowerCase();
+                return ['yes', 'true', '1', 'done'].includes(s);
+            }).length;
+            
+            // Calculate Average Confluence Percentage safely
+            let sumConf = filteredData.reduce((sum, d) => {
+                let strVal = String(d.Confluence_Complete_Percent).replace('%', '').trim();
+                let val = parseFloat(strVal);
+                return sum + (isNaN(val) ? 0 : val);
+            }, 0);
+            let avgConf = totalProj > 0 ? (sumConf / totalProj).toFixed(1) : 0;
+
+            document.getElementById('kpi-projects').innerText = totalProj;
+            document.getElementById('kpi-depts').innerText = uniqueDepts;
+            document.getElementById('kpi-managers').innerText = uniqueMgrs;
+            document.getElementById('kpi-saas').innerText = saasYesCount;
+            document.getElementById('kpi-confluence').innerText = avgConf + '%';
+            document.getElementById('record-count').innerText = `${totalProj} records found`;
+        }
+
+        function updateInsights() {
+            const totalProj = filteredData.length;
+            const panel = document.getElementById('insights-panel');
+            
+            if (totalProj === 0) {
+                panel.innerHTML = "<div class='flex items-center justify-center h-full text-amber-400'>No data matches the current filter criteria.</div>";
+                return;
+            }
+
+            let saasCount = 0;
+            let kcfWorkload = {};
+            let lowConfCount = 0;
+
+            filteredData.forEach(d => {
+                let s = String(d.SaaS_Migrated).toLowerCase();
+                if(['yes', 'true', '1', 'done'].includes(s)) saasCount++;
+
+                if(d.KCF_PIC) {
+                    kcfWorkload[d.KCF_PIC] = (kcfWorkload[d.KCF_PIC] || 0) + 1;
+                }
+
+                let cVal = parseFloat(String(d.Confluence_Complete_Percent).replace('%', '')) || 0;
+                if(cVal < 50) lowConfCount++;
+            });
+
+            const saasRate = totalProj > 0 ? ((saasCount / totalProj) * 100).toFixed(1) : 0;
+            
+            let topKcf = 'N/A', maxKcf = 0;
+            for(const [kcf, count] of Object.entries(kcfWorkload)) {
+                if(count > maxKcf) { maxKcf = count; topKcf = kcf; }
+            }
+
+            let insightsHTML = `<ul class="list-disc pl-5 space-y-2.5 marker:text-primary">`;
+            
+            insightsHTML += `<li><strong>Data Scope:</strong> Currently analyzing <strong>${totalProj}</strong> projects based on selected filters.</li>`;
+            
+            if(saasRate >= 80) {
+                insightsHTML += `<li><strong>Migration Health:</strong> Excellent! <strong>${saasRate}%</strong> of filtered projects have successfully migrated to SaaS.</li>`;
+            } else {
+                insightsHTML += `<li><strong>Migration Alert:</strong> Only <strong>${saasRate}%</strong> are SaaS Migrated. Attention may be required to drive migration.</li>`;
+            }
+
+            if(maxKcf > 0) {
+                let perc = ((maxKcf / totalProj) * 100).toFixed(1);
+                insightsHTML += `<li><strong>Resource Bottleneck:</strong> <strong>${topKcf}</strong> has the highest workload assignment (${maxKcf} projects, representing ${perc}% of the current view).</li>`;
+            }
+
+            if(lowConfCount > 0) {
+                insightsHTML += `<li><strong>Documentation Quality:</strong> <strong>${lowConfCount}</strong> projects have dangerously low Confluence completion (below 50%). Review required.</li>`;
+            } else {
+                insightsHTML += `<li><strong>Documentation Quality:</strong> Healthy. All projects maintain Confluence completion rates above 50%.</li>`;
+            }
+
+            insightsHTML += `</ul>`;
+            panel.innerHTML = insightsHTML;
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = '';
+
+            if (filteredData.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="10" class="px-4 py-8 text-center text-slate-500">No records found matching filters</td></tr>`;
+                return;
+            }
+
+            filteredData.forEach(row => {
+                let confStr = String(row.Confluence_Complete_Percent || 0).replace('%', '');
+                const confVal = parseFloat(confStr) || 0;
+                
+                let confColor = 'bg-red-500';
+                if(confVal >= 80) confColor = 'bg-emerald-500';
+                else if(confVal >= 50) confColor = 'bg-amber-500';
+
+                let saasStr = String(row.SaaS_Migrated).trim();
+                let saasBadge = 'bg-slate-700 text-slate-300';
+                let saasLower = saasStr.toLowerCase();
+                
+                if(['yes', 'true', '1', 'done'].includes(saasLower)) {
+                    saasBadge = 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+                    saasStr = 'Yes';
+                } else if(['no', 'false', '0', 'pending', ''].includes(saasLower)) {
+                    saasBadge = 'bg-red-500/20 text-red-400 border border-red-500/30';
+                    saasStr = saasStr === '' ? 'No' : saasStr;
+                } else {
+                    saasBadge = 'bg-amber-500/20 text-amber-400 border border-amber-500/30';
+                }
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-800 transition-colors";
+                tr.innerHTML = `
+                    <td class="px-4 py-3">${row['Sl No'] || '-'}</td>
+                    <td class="px-4 py-3 font-medium text-slate-200">${row['Dept'] || '-'}</td>
+                    <td class="px-4 py-3 text-slate-400 font-mono text-xs">${row['TOFEE_ID'] || '-'}</td>
+                    <td class="px-4 py-3 font-medium text-primary">${row['Project'] || '-'}</td>
+                    <td class="px-4 py-3">${row['Manager'] || '-'}</td>
+                    <td class="px-4 py-3 font-semibold text-secondary bg-slate-800/30">${row['KCF_PIC'] || '-'}</td>
+                    <td class="px-4 py-3 text-xs text-slate-400">${row['DEV_PIC'] || '-'}</td>
+                    <td class="px-4 py-3 text-xs text-slate-400">${row['AMO_PIC'] || '-'}</td>
+                    <td class="px-4 py-3 text-xs">
+                        <span class="px-2.5 py-1 inline-flex text-xs font-medium rounded-full ${saasBadge}">
+                            ${saasStr}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 min-w-[150px]">
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs font-bold w-10 text-right">${confVal}%</span>
+                            <div class="w-full bg-slate-800 rounded-full h-2 flex-1 shadow-inner border border-slate-700">
+                                <div class="${confColor} h-1.5 rounded-full mt-[1px] ml-[1px]" style="width: ${Math.max(0, Math.min(confVal, 98))}%"></div>
+                            </div>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function destroyChart(chartKey) {
+            if (charts[chartKey]) { charts[chartKey].destroy(); }
+        }
+
+        function drawCharts() {
+            if (filteredData.length === 0) {
+                Object.keys(charts).forEach(destroyChart);
+                return;
+            }
+
+            const deptCount = {};
+            const saasCount = {};
+            const kcfCount = {};
+            const confBins = {'0-20%':0, '21-40%':0, '41-60%':0, '61-80%':0, '81-100%':0};
+            
+            // New Aggregation for Avg Confluence by Dept
+            const deptConfStats = {};
+
+            // Aggregate Data
+            filteredData.forEach(row => {
+                const dept = row.Dept || 'Unknown';
+                deptCount[dept] = (deptCount[dept] || 0) + 1;
+
+                const saasStr = String(row.SaaS_Migrated).trim().toLowerCase();
+                const isSaas = ['yes', 'true', '1', 'done'].includes(saasStr) ? 'Migrated (Yes)' : 'Not Migrated (No)';
+                saasCount[isSaas] = (saasCount[isSaas] || 0) + 1;
+                
+                const kcf = row.KCF_PIC || 'Unassigned';
+                kcfCount[kcf] = (kcfCount[kcf] || 0) + 1;
+
+                let cVal = parseFloat(String(row.Confluence_Complete_Percent).replace('%', '')) || 0;
+                
+                // Binning for distribution
+                if(cVal <= 20) confBins['0-20%']++;
+                else if(cVal <= 40) confBins['21-40%']++;
+                else if(cVal <= 60) confBins['41-60%']++;
+                else if(cVal <= 80) confBins['61-80%']++;
+                else confBins['81-100%']++;
+
+                // Summation for Average Chart
+                if(!deptConfStats[dept]) deptConfStats[dept] = { sum: 0, count: 0 };
+                deptConfStats[dept].sum += cVal;
+                deptConfStats[dept].count += 1;
+            });
+
+            // 1. Projects by Department (Bar)
+            destroyChart('deptProjects');
+            charts.deptProjects = new Chart(document.getElementById('chart-dept-projects'), {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(deptCount),
+                    datasets: [{
+                        label: 'Projects',
+                        data: Object.values(deptCount),
+                        backgroundColor: 'rgba(59, 130, 246, 0.7)', // Blue
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        borderWidth: 1, borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+                }
+            });
+
+            // 2. Avg Confluence % by Department (Line with fill)
+            const avgDeptLabels = Object.keys(deptConfStats);
+            const avgDeptData = avgDeptLabels.map(d => (deptConfStats[d].sum / deptConfStats[d].count).toFixed(1));
+            
+            destroyChart('avgConfDept');
+            charts.avgConfDept = new Chart(document.getElementById('chart-avg-conf-dept'), {
+                type: 'line',
+                data: {
+                    labels: avgDeptLabels,
+                    datasets: [{
+                        label: 'Avg Confluence %',
+                        data: avgDeptData,
+                        backgroundColor: 'rgba(139, 92, 246, 0.2)', // Violet fill
+                        borderColor: 'rgba(139, 92, 246, 1)', // Violet line
+                        borderWidth: 2, 
+                        pointBackgroundColor: 'rgba(139, 92, 246, 1)',
+                        pointRadius: 4,
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { 
+                        legend: { display: false },
+                        tooltip: { callbacks: { label: function(context) { return context.parsed.y + '%'; } } }
+                    },
+                    scales: { y: { beginAtZero: true, max: 100, ticks: { callback: function(value) { return value + '%' } } } }
+                }
+            });
+
+            // 3. SaaS Migration Status (Doughnut)
+            destroyChart('saasStatus');
+            charts.saasStatus = new Chart(document.getElementById('chart-saas-status'), {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(saasCount),
+                    datasets: [{
+                        data: Object.values(saasCount),
+                        backgroundColor: [colors.green, colors.red],
+                        borderWidth: 2, borderColor: '#1e293b',
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false, cutout: '70%',
+                    plugins: { legend: { position: 'bottom', labels: { color: '#cbd5e1', padding: 15, boxWidth: 12, usePointStyle: true } } }
+                }
+            });
+
+            // 4. Top 5 KCF_PIC Workload (Bar)
+            const sortedKcf = Object.entries(kcfCount).sort((a,b) => b[1] - a[1]).slice(0, 5);
+            destroyChart('kcfWorkload');
+            charts.kcfWorkload = new Chart(document.getElementById('chart-kcf'), {
+                type: 'bar',
+                data: {
+                    labels: sortedKcf.map(k => k[0]),
+                    datasets: [{
+                        label: 'Assigned Projects',
+                        data: sortedKcf.map(k => k[1]),
+                        backgroundColor: 'rgba(16, 185, 129, 0.7)', // Emerald
+                        borderColor: 'rgba(16, 185, 129, 1)',
+                        borderWidth: 1, borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+                }
+            });
+
+            // 5. Confluence Completion Distribution (Bar / Histogram look)
+            destroyChart('distribution');
+            charts.distribution = new Chart(document.getElementById('chart-distribution'), {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(confBins),
+                    datasets: [{
+                        label: 'Number of Projects',
+                        data: Object.values(confBins),
+                        backgroundColor: 'rgba(245, 158, 11, 0.7)', // Amber
+                        borderColor: 'rgba(245, 158, 11, 1)',
+                        borderWidth: 1, borderRadius: { topLeft: 4, topRight: 4 }
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { 
+                        y: { beginAtZero: true, ticks: { precision: 0 } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
