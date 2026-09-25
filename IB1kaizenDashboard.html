@@ -1,0 +1,1534 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kaizen Continuous Improvement Executive Dashboard</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8'
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- PapaParse for CSV/TSV parsing -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <!-- SheetJS (xlsx) for Excel workbook handling -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.5);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(100, 116, 139, 0.4);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(148, 163, 184, 0.6);
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen transition-colors duration-200">
+
+  <!-- Header Bar -->
+  <header class="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+          <i data-lucide="activity" class="w-5 h-5 text-white"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+            Kaizen CI Executive Dashboard
+            <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">Lean CI</span>
+          </h1>
+          <p class="text-xs text-slate-400">Continuous Improvement, PDCA & Impact Register</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2.5">
+        <!-- Download Template Button -->
+        <button id="downloadTemplateBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-medium transition" title="Download empty CSV template with exact column headers">
+          <i data-lucide="file-text" class="w-3.5 h-3.5 text-blue-400"></i>
+          <span>CSV Template</span>
+        </button>
+
+        <!-- Import File Button -->
+        <button id="headerUploadBtn" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition shadow-sm hover:shadow-blue-500/25">
+          <i data-lucide="upload-cloud" class="w-3.5 h-3.5"></i>
+          <span>Upload Dataset</span>
+        </button>
+
+        <!-- Clear Dataset Button (Shown when data loaded) -->
+        <button id="clearDataBtn" class="hidden flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/40 text-xs font-medium transition" title="Clear current dataset">
+          <i data-lucide="trash-2" class="w-3.5 h-3.5 text-rose-400"></i>
+          <span>Clear Data</span>
+        </button>
+
+        <!-- Export CSV Button (Shown when data loaded) -->
+        <button id="exportCsvBtn" class="hidden flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-medium transition">
+          <i data-lucide="download" class="w-3.5 h-3.5 text-emerald-400"></i>
+          <span>Export Filtered</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- INITIAL EMPTY STATE HERO (Displayed when kaizenData is empty) -->
+    <div id="emptyStateContainer" class="flex flex-col items-center justify-center p-8 sm:p-12 border-2 border-dashed border-slate-700/80 rounded-2xl bg-slate-800/30 text-center max-w-3xl mx-auto my-6 shadow-sm">
+      <div class="w-16 h-16 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 mb-4 shadow-inner">
+        <i data-lucide="upload-cloud" class="w-8 h-8"></i>
+      </div>
+      <h2 class="text-xl font-bold text-white mb-2">No Kaizen Data Loaded</h2>
+      <p class="text-xs text-slate-400 max-w-md mb-6 leading-relaxed">
+        Upload your Continuous Improvement register spreadsheet (.csv, .tsv, .xlsx) to initialize executive KPIs, milestone timelines, scatter value analysis, and drilldowns.
+      </p>
+
+      <!-- Drag & Drop Zone -->
+      <div id="mainDropZone" class="w-full max-w-md p-6 border-2 border-dashed border-slate-600 hover:border-blue-500 bg-slate-900/60 hover:bg-slate-900/90 rounded-xl cursor-pointer transition flex flex-col items-center group mb-4">
+        <input type="file" id="mainFileInput" accept=".csv,.tsv,.xlsx,.xls" class="hidden">
+        <i data-lucide="file-spreadsheet" class="w-8 h-8 text-slate-500 group-hover:text-blue-400 transition mb-2"></i>
+        <span class="text-xs font-medium text-slate-200">Click to browse or drop Kaizen register file here</span>
+        <span class="text-[11px] text-slate-500 mt-1">Supports UTF-8 CSV, Tab-separated TSV, and Excel (.xlsx)</span>
+      </div>
+
+      <div class="flex flex-wrap items-center justify-center gap-3">
+        <button id="emptyTemplateBtn" class="flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-medium transition">
+          <i data-lucide="download" class="w-3.5 h-3.5 text-blue-400"></i>
+          <span>Download Blank CSV Template</span>
+        </button>
+      </div>
+
+      <!-- Expected schema note -->
+      <div class="mt-6 text-left w-full bg-slate-900/80 p-4 rounded-xl border border-slate-800 text-[11px] text-slate-400">
+        <span class="font-semibold text-slate-300 block mb-1 text-xs">Supported Column Headers:</span>
+        <code class="text-blue-400 break-words leading-relaxed font-mono">
+          "ID", "Kaizen Topic", "Problem / Opportunity", "Current State", "Proposed Improvement", "KPI", "Baseline", "Expected Target", "Owner", "Start Date", "Planned End Date", "Status", "% Completion", "Benefit", "Evidence"
+        </code>
+      </div>
+    </div>
+
+    <!-- DASHBOARD CONTENT CONTAINER (Hidden until dataset is loaded) -->
+    <div id="dashboardContent" class="hidden space-y-6">
+
+      <!-- 5 Key Performance Indicators -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <!-- KPI 1 -->
+        <div class="bg-slate-800/80 border border-slate-700/60 rounded-xl p-4 shadow-sm backdrop-blur relative group hover:border-blue-500/50 transition">
+          <div class="flex items-center justify-between text-slate-400 mb-2">
+            <span class="text-xs font-semibold uppercase tracking-wider">Total Kaizens</span>
+            <div class="p-2 rounded-lg bg-blue-500/10 text-blue-400">
+              <i data-lucide="layers" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <div class="flex items-baseline gap-2">
+            <span id="kpiTotalCount" class="text-2xl font-extrabold text-white">0</span>
+            <span id="kpiActiveCount" class="text-xs text-blue-400 font-medium">0 active</span>
+          </div>
+          <div class="mt-2 text-[11px] text-slate-400 flex items-center gap-1">
+            <i data-lucide="folder-check" class="w-3 h-3 text-slate-400"></i>
+            <span>Logged improvement portfolio</span>
+          </div>
+        </div>
+
+        <!-- KPI 2 -->
+        <div class="bg-slate-800/80 border border-slate-700/60 rounded-xl p-4 shadow-sm backdrop-blur relative group hover:border-emerald-500/50 transition">
+          <div class="flex items-center justify-between text-slate-400 mb-2">
+            <span class="text-xs font-semibold uppercase tracking-wider">Completion Rate</span>
+            <div class="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
+              <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <div class="flex items-baseline gap-2">
+            <span id="kpiCompletionRate" class="text-2xl font-extrabold text-white">0%</span>
+            <span id="kpiCompletedCount" class="text-xs text-emerald-400 font-medium">0 done</span>
+          </div>
+          <div class="mt-2 text-[11px] text-slate-400 flex items-center gap-1">
+            <span id="kpiAvgCompletion" class="text-slate-300 font-semibold">Avg: 0%</span>
+            <span>overall progress</span>
+          </div>
+        </div>
+
+        <!-- KPI 3 -->
+        <div class="bg-slate-800/80 border border-slate-700/60 rounded-xl p-4 shadow-sm backdrop-blur relative group hover:border-indigo-500/50 transition">
+          <div class="flex items-center justify-between text-slate-400 mb-2">
+            <span class="text-xs font-semibold uppercase tracking-wider">Schedule Adherence</span>
+            <div class="p-2 rounded-lg bg-indigo-500/10 text-indigo-400">
+              <i data-lucide="clock" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <div class="flex items-baseline gap-2">
+            <span id="kpiOnTimeRate" class="text-2xl font-extrabold text-white">0%</span>
+            <span class="text-xs text-indigo-400 font-medium">on-time</span>
+          </div>
+          <div class="mt-2 text-[11px] text-slate-400 flex items-center gap-1">
+            <i data-lucide="shield-check" class="w-3 h-3 text-indigo-400"></i>
+            <span>Timeline compliance index</span>
+          </div>
+        </div>
+
+        <!-- KPI 4 -->
+        <div class="bg-slate-800/80 border border-slate-700/60 rounded-xl p-4 shadow-sm backdrop-blur relative group hover:border-amber-500/50 transition">
+          <div class="flex items-center justify-between text-slate-400 mb-2">
+            <span class="text-xs font-semibold uppercase tracking-wider">Documented Benefits</span>
+            <div class="p-2 rounded-lg bg-amber-500/10 text-amber-400">
+              <i data-lucide="award" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <div class="flex items-baseline gap-2">
+            <span id="kpiBenefitCount" class="text-2xl font-extrabold text-white">0</span>
+            <span class="text-xs text-amber-400 font-medium">Outcomes</span>
+          </div>
+          <div class="mt-2 text-[11px] text-slate-400 flex items-center gap-1">
+            <i data-lucide="sparkles" class="w-3 h-3 text-amber-400"></i>
+            <span>Realized value improvements</span>
+          </div>
+        </div>
+
+        <!-- KPI 5 -->
+        <div class="bg-slate-800/80 border border-slate-700/60 rounded-xl p-4 shadow-sm backdrop-blur relative group hover:border-rose-500/50 transition">
+          <div class="flex items-center justify-between text-slate-400 mb-2">
+            <span class="text-xs font-semibold uppercase tracking-wider">Critical / Overdue</span>
+            <div class="p-2 rounded-lg bg-rose-500/10 text-rose-400">
+              <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <div class="flex items-baseline gap-2">
+            <span id="kpiOverdueCount" class="text-2xl font-extrabold text-rose-400">0</span>
+            <span class="text-xs text-rose-300 font-medium">Needs Attention</span>
+          </div>
+          <div class="mt-2 text-[11px] text-slate-400 flex items-center gap-1">
+            <i data-lucide="flame" class="w-3 h-3 text-rose-400"></i>
+            <span>Past planned milestone date</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slicers & Filters Panel -->
+      <div class="bg-slate-800/70 border border-slate-700/60 rounded-xl p-4 shadow-md backdrop-blur">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-700/50">
+          <div class="flex items-center gap-2">
+            <i data-lucide="sliders" class="w-4 h-4 text-blue-400"></i>
+            <h2 class="text-sm font-semibold tracking-wide uppercase text-slate-200">Interactive Slicers & Timeline Filter</h2>
+            <span id="filterCountBadge" class="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">Showing all items</span>
+          </div>
+          <button id="clearFiltersBtn" class="text-xs font-medium text-slate-400 hover:text-blue-400 flex items-center gap-1 transition self-end md:self-auto">
+            <i data-lucide="x-circle" class="w-3.5 h-3.5"></i>
+            Reset Slicers
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-3">
+          <!-- Search -->
+          <div class="col-span-1 sm:col-span-2 lg:col-span-1">
+            <label class="block text-xs font-medium text-slate-400 mb-1">Global Search</label>
+            <div class="relative">
+              <input type="text" id="searchInput" placeholder="Search topic, owner, benefit..."
+                class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+              <i data-lucide="search" class="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5"></i>
+            </div>
+          </div>
+
+          <!-- Status Filter -->
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1">Status Slicer</label>
+            <select id="statusFilter" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500">
+              <option value="ALL">All Statuses</option>
+            </select>
+          </div>
+
+          <!-- Owner Filter -->
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1">Owner Slicer</label>
+            <select id="ownerFilter" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500">
+              <option value="ALL">All Owners</option>
+            </select>
+          </div>
+
+          <!-- KPI Filter -->
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1">Target KPI Metric</label>
+            <select id="kpiFilter" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500">
+              <option value="ALL">All KPIs</option>
+            </select>
+          </div>
+
+          <!-- Timeline Filter -->
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1">Planned End Timeline</label>
+            <div class="grid grid-cols-2 gap-1.5">
+              <input type="date" id="dateStartFilter" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-[11px] text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500">
+              <input type="date" id="dateEndFilter" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-[11px] text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Deep Analysis: Automated CI Executive Insights Summary -->
+      <div class="bg-gradient-to-r from-blue-950/40 via-indigo-950/30 to-purple-950/40 border border-indigo-700/30 rounded-xl p-4">
+        <div class="flex items-center gap-2 mb-2">
+          <div class="p-1 rounded bg-indigo-500/20 text-indigo-400">
+            <i data-lucide="cpu" class="w-4 h-4"></i>
+          </div>
+          <h3 class="text-xs font-bold uppercase tracking-wider text-indigo-300">Continuous Improvement Intelligence Summary</h3>
+        </div>
+        <div id="aiInsightsContainer" class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+          <!-- Dynamically generated from data -->
+        </div>
+      </div>
+
+      <!-- 5 Advanced Visuals Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <!-- Visual 1: Status & Health Distribution (Span 5) -->
+        <div class="lg:col-span-5 bg-slate-800/80 border border-slate-700/60 rounded-xl p-4 shadow-sm flex flex-col">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <h3 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+                <i data-lucide="pie-chart" class="w-4 h-4 text-emerald-400"></i>
+                Status & Health Distribution
+              </h3>
+              <p class="text-[11px] text-slate-400">Breakdown of initiatives across lifecycle states</p>
+            </div>
+          </div>
+          <div class="relative flex-1 min-h-[260px] flex items-center justify-center">
+            <canvas id="statusDonutChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Visual 2: Owner Workload & Velocity (Span 7) -->
+        <div class="lg:col-span-7 bg-slate-800/80 border border-slate-700/60 rounded-xl p-4 shadow-sm flex flex-col">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <h3 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+                <i data-lucide="users" class="w-4 h-4 text-indigo-400"></i>
+                Owner Workload & Average Delivery Rate
+              </h3>
+              <p class="text-[11px] text-slate-400">Total initiatives assigned vs average % completion by owner</p>
+            </div>
+          </div>
+          <div class="relative flex-1 min-h-[260px]">
+            <canvas id="ownerWorkloadChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Visual 3: Cumulative Velocity / S-Curve (Span 12) -->
+        <div class="lg:col-span-12 bg-slate-800/80 border border-slate-700/60 rounded-xl p-4 shadow-sm">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-3 gap-2">
+            <div>
+              <h3 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+                <i data-lucide="trending-up" class="w-4 h-4 text-teal-400"></i>
+                Kaizen Cumulative Velocity & Milestone Curve
+              </h3>
+              <p class="text-[11px] text-slate-400">Cumulative planned completion target dates vs completed rollouts</p>
+            </div>
+            <div class="flex items-center gap-3 text-xs text-slate-400">
+              <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span> Cumulative Planned</span>
+              <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Actual Completed</span>
+            </div>
+          </div>
+          <div class="relative min-h-[230px]">
+            <canvas id="velocityTrendChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Visual 4: Baseline vs Expected Target Performance Deltas (Span 6) -->
+        <div class="lg:col-span-6 bg-slate-800/80 border border-slate-700/60 rounded-xl p-4 shadow-sm flex flex-col">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <h3 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+                <i data-lucide="bar-chart-2" class="w-4 h-4 text-amber-400"></i>
+                Baseline vs Expected Target Performance Deltas
+              </h3>
+              <p class="text-[11px] text-slate-400">Comparative numerical variance between current and target state</p>
+            </div>
+          </div>
+          <div class="relative flex-1 min-h-[260px]">
+            <canvas id="targetVsBaselineChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Visual 5: Value / Impact vs Effort Quadrant Scatter Analysis (Span 6) -->
+        <div class="lg:col-span-6 bg-slate-800/80 border border-slate-700/60 rounded-xl p-4 shadow-sm flex flex-col">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-3 gap-1">
+            <div>
+              <h3 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+                <i data-lucide="target" class="w-4 h-4 text-purple-400"></i>
+                Impact vs Effort Value Matrix
+              </h3>
+              <p class="text-[11px] text-slate-400">Quadrant scatter: Duration (Days) vs Impact / Benefit Score</p>
+            </div>
+            <div class="text-[10px] text-purple-300 font-medium">Quick Wins vs Strategic Bets</div>
+          </div>
+          <div class="relative flex-1 min-h-[260px]">
+            <canvas id="valueMatrixChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Master Kaizen Action Item Register Table -->
+      <div class="bg-slate-800/80 border border-slate-700/60 rounded-xl shadow-sm overflow-hidden">
+        <div class="p-4 border-b border-slate-700/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+              <i data-lucide="table" class="w-4 h-4 text-blue-400"></i>
+              Master Kaizen Action Item Register
+            </h3>
+            <p class="text-[11px] text-slate-400">Select any record to view full PDCA problem statement, improvement, and audit evidence</p>
+          </div>
+          <div class="text-xs text-slate-400 flex items-center gap-2">
+            <span>Show:</span>
+            <select id="pageSizeSelect" class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200">
+              <option value="5">5</option>
+              <option value="10" selected>10</option>
+              <option value="25">25</option>
+              <option value="50">50</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs text-slate-300">
+            <thead class="bg-slate-900/60 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-700/80 select-none">
+              <tr>
+                <th class="py-3 px-3 cursor-pointer hover:text-white" onclick="handleSort('ID')">ID ⇕</th>
+                <th class="py-3 px-3 cursor-pointer hover:text-white" onclick="handleSort('Kaizen Topic')">Topic ⇕</th>
+                <th class="py-3 px-3 cursor-pointer hover:text-white" onclick="handleSort('Owner')">Owner ⇕</th>
+                <th class="py-3 px-3">Target KPI & Expected Level</th>
+                <th class="py-3 px-3 cursor-pointer hover:text-white" onclick="handleSort('Planned End Date')">Planned End ⇕</th>
+                <th class="py-3 px-3 cursor-pointer hover:text-white" onclick="handleSort('% Completion')">Completion ⇕</th>
+                <th class="py-3 px-3 cursor-pointer hover:text-white" onclick="handleSort('Status')">Status ⇕</th>
+                <th class="py-3 px-3 text-right">Drilldown</th>
+              </tr>
+            </thead>
+            <tbody id="kaizenTableBody" class="divide-y divide-slate-700/40">
+              <!-- Rendered via JavaScript -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="p-3 bg-slate-900/40 border-t border-slate-700/60 flex items-center justify-between text-xs text-slate-400">
+          <span id="paginationInfo">Showing 0 to 0 of 0 entries</span>
+          <div class="flex items-center gap-1.5" id="paginationControls"></div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Upload Modal -->
+  <div id="uploadModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-lg shadow-2xl p-6">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-2">
+          <div class="p-2 rounded-lg bg-blue-500/20 text-blue-400">
+            <i data-lucide="file-spreadsheet" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white">Import Kaizen Spreadsheet</h3>
+            <p class="text-xs text-slate-400">Upload CSV, TSV, or Excel (.xlsx)</p>
+          </div>
+        </div>
+        <button id="closeUploadModalBtn" class="text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Dropzone inside modal -->
+      <div id="modalDropZone" class="border-2 border-dashed border-slate-600 hover:border-blue-500 rounded-xl p-6 text-center cursor-pointer bg-slate-900/50 transition">
+        <input type="file" id="modalFileInput" accept=".csv,.tsv,.xlsx,.xls" class="hidden">
+        <i data-lucide="upload-cloud" class="w-10 h-10 text-slate-400 mx-auto mb-2"></i>
+        <p class="text-sm font-semibold text-slate-200">Drag & drop your file, or click to browse</p>
+        <p class="text-[11px] text-slate-400 mt-1">Accepts CSV, TSV, or Excel spreadsheets</p>
+      </div>
+
+      <div class="mt-4 p-3 bg-slate-900/60 rounded-lg border border-slate-700/60 text-[11px] text-slate-400">
+        <span class="font-semibold text-slate-300 block mb-1">Expected Headers:</span>
+        <code class="text-blue-400 break-words leading-relaxed font-mono">
+          "ID", "Kaizen Topic", "Problem / Opportunity", "Current State", "Proposed Improvement", "KPI", "Baseline", "Expected Target", "Owner", "Start Date", "Planned End Date", "Status", "% Completion", "Benefit", "Evidence"
+        </code>
+      </div>
+
+      <div class="mt-5 flex justify-end gap-2">
+        <button id="cancelUploadBtn" class="px-4 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-medium transition">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Kaizen A3 Drilldown Modal -->
+  <div id="detailModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+      <div class="p-5 border-b border-slate-700 flex items-start justify-between">
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <span id="modalKaizenId" class="font-mono text-xs px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">KZ-000</span>
+            <span id="modalStatusBadge" class="text-xs px-2 py-0.5 rounded-full font-medium">Status</span>
+          </div>
+          <h2 id="modalTopic" class="text-base font-bold text-white">Kaizen Topic</h2>
+        </div>
+        <button id="closeDetailModalBtn" class="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-5 space-y-4 text-xs">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-900/70 p-3 rounded-xl border border-slate-700/60">
+          <div>
+            <span class="text-slate-500 block text-[10px] uppercase font-semibold">Owner</span>
+            <span id="modalOwner" class="text-slate-200 font-medium">--</span>
+          </div>
+          <div>
+            <span class="text-slate-500 block text-[10px] uppercase font-semibold">KPI</span>
+            <span id="modalKpi" class="text-slate-200 font-medium">--</span>
+          </div>
+          <div>
+            <span class="text-slate-500 block text-[10px] uppercase font-semibold">Timeline</span>
+            <span id="modalDates" class="text-slate-200 font-medium">--</span>
+          </div>
+          <div>
+            <span class="text-slate-500 block text-[10px] uppercase font-semibold">Progress</span>
+            <div class="flex items-center gap-1.5 mt-0.5">
+              <div class="w-12 bg-slate-700 h-1.5 rounded-full overflow-hidden">
+                <div id="modalProgressBar" class="h-full bg-blue-500 rounded-full" style="width: 0%"></div>
+              </div>
+              <span id="modalCompletion" class="font-semibold text-white">0%</span>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h4 class="font-semibold text-slate-300 uppercase tracking-wider text-[11px] mb-1 flex items-center gap-1.5">
+            <i data-lucide="alert-circle" class="w-3.5 h-3.5 text-amber-400"></i> Problem / Opportunity
+          </h4>
+          <p id="modalProblem" class="bg-slate-900/50 p-2.5 rounded-lg border border-slate-700/50 text-slate-300 leading-relaxed">--</p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <h4 class="font-semibold text-slate-300 uppercase tracking-wider text-[11px] mb-1 flex items-center gap-1.5">
+              <i data-lucide="activity" class="w-3.5 h-3.5 text-rose-400"></i> Current State & Baseline
+            </h4>
+            <div class="bg-slate-900/50 p-2.5 rounded-lg border border-slate-700/50 space-y-1">
+              <p id="modalCurrentState" class="text-slate-300">--</p>
+              <div class="text-[11px] font-mono text-slate-400 pt-1 border-t border-slate-800">
+                Baseline: <strong id="modalBaseline" class="text-white">--</strong>
+              </div>
+            </div>
+          </div>
+          <div>
+            <h4 class="font-semibold text-slate-300 uppercase tracking-wider text-[11px] mb-1 flex items-center gap-1.5">
+              <i data-lucide="sparkles" class="w-3.5 h-3.5 text-emerald-400"></i> Proposed Improvement & Target
+            </h4>
+            <div class="bg-slate-900/50 p-2.5 rounded-lg border border-slate-700/50 space-y-1">
+              <p id="modalImprovement" class="text-slate-300">--</p>
+              <div class="text-[11px] font-mono text-slate-400 pt-1 border-t border-slate-800">
+                Expected Target: <strong id="modalTarget" class="text-emerald-400">--</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h4 class="font-semibold text-slate-300 uppercase tracking-wider text-[11px] mb-1 flex items-center gap-1.5">
+            <i data-lucide="trophy" class="w-3.5 h-3.5 text-blue-400"></i> Realized Benefit & Evidence
+          </h4>
+          <div class="bg-slate-900/50 p-3 rounded-lg border border-slate-700/50 space-y-2">
+            <div>
+              <span class="text-slate-500 font-semibold block text-[10px] uppercase">Benefit</span>
+              <p id="modalBenefit" class="text-slate-200">--</p>
+            </div>
+            <div>
+              <span class="text-slate-500 font-semibold block text-[10px] uppercase">Evidence / Audit Trail</span>
+              <p id="modalEvidence" class="text-slate-300 font-mono text-[11px]">--</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="p-4 border-t border-slate-700 flex justify-end">
+        <button id="modalDismissBtn" class="px-4 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-medium transition">
+          Close Window
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 hidden bg-slate-800 border border-slate-700 text-white px-4 py-2.5 rounded-xl shadow-xl flex items-center gap-2.5 text-xs transition-all transform translate-y-2">
+    <i data-lucide="info" id="toastIcon" class="w-4 h-4 text-blue-400"></i>
+    <span id="toastMsg">Notification message</span>
+  </div>
+
+  <script>
+    /* Application State - starts completely empty */
+    let kaizenData = [];
+    let filteredData = [];
+
+    let currentSortColumn = 'ID';
+    let isSortAsc = true;
+    let currentPage = 1;
+    let pageSize = 10;
+    let charts = {};
+
+    const CSV_TEMPLATE_HEADERS = [
+      "ID",
+      "Kaizen Topic",
+      "Problem / Opportunity",
+      "Current State",
+      "Proposed Improvement",
+      "KPI",
+      "Baseline",
+      "Expected Target",
+      "Owner",
+      "Start Date",
+      "Planned End Date",
+      "Status",
+      "% Completion",
+      "Benefit",
+      "Evidence"
+    ];
+
+    function showToast(message, isError = false) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMsg');
+      toastMsg.textContent = message;
+      if (isError) {
+        toast.className = toast.className.replace('border-slate-700 bg-slate-800 text-white', 'border-rose-500 bg-rose-950 text-white');
+      } else {
+        toast.className = toast.className.replace('border-rose-500 bg-rose-950 text-white', 'border-slate-700 bg-slate-800 text-white');
+      }
+      toast.classList.remove('hidden');
+      setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 3500);
+    }
+
+    function parseNumeric(val) {
+      if (typeof val === 'number') return val;
+      if (!val) return 0;
+      const clean = String(val).replace(/[^0-9.-]/g, '');
+      const num = parseFloat(clean);
+      return isNaN(num) ? 0 : num;
+    }
+
+    function getStatusBadge(status) {
+      const s = String(status || '').trim().toLowerCase();
+      if (s === 'completed') {
+        return '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Completed</span>';
+      } else if (s === 'in progress') {
+        return '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-500/20 text-blue-400 border border-blue-500/30">In Progress</span>';
+      } else if (s === 'under review') {
+        return '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/30">Under Review</span>';
+      } else if (s === 'overdue' || s === 'delayed') {
+        return '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-500/20 text-rose-400 border border-rose-500/30">Overdue</span>';
+      } else {
+        return '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-700 text-slate-300 border border-slate-600">Not Started</span>';
+      }
+    }
+
+    function normalizeRow(obj, idx) {
+      const cleanMap = {};
+      for (let k in obj) {
+        if (!Object.prototype.hasOwnProperty.call(obj, k)) continue;
+        const normalizedKey = k.trim().replace(/^["']|["']$/g, '').toLowerCase();
+        cleanMap[normalizedKey] = obj[k];
+      }
+
+      function getField(candidates, fallback = '') {
+        for (const c of candidates) {
+          const l = c.toLowerCase();
+          if (cleanMap[l] !== undefined && cleanMap[l] !== null && String(cleanMap[l]).trim() !== '') {
+            return String(cleanMap[l]).trim();
+          }
+        }
+        return fallback;
+      }
+
+      const idVal = getField(['id', 'kaizen id', 'kz id'], `KZ-${String(idx + 1).padStart(3, '0')}`);
+      const topic = getField(['kaizen topic', 'topic', 'title', 'initiative'], 'Untitled Kaizen');
+      const problem = getField(['problem / opportunity', 'problem', 'opportunity', 'issue'], 'N/A');
+      const currentState = getField(['current state', 'current', 'as-is'], 'N/A');
+      const proposedImprovement = getField(['proposed improvement', 'improvement', 'solution', 'countermeasure'], 'N/A');
+      const kpi = getField(['kpi', 'metric', 'measure'], 'General Improvement');
+      const baseline = getField(['baseline', 'base'], '0');
+      const target = getField(['expected target', 'target', 'goal'], '0');
+      const owner = getField(['owner', 'lead', 'champion', 'assignee'], 'Unassigned');
+      const startDate = getField(['start date', 'start'], '');
+      const endDate = getField(['planned end date', 'planned end', 'target date', 'end date', 'due date'], '');
+      const status = getField(['status', 'state'], 'In Progress');
+      const rawPct = getField(['% completion', 'completion', 'progress', '% done'], '0');
+      const pct = Math.min(100, Math.max(0, parseNumeric(rawPct)));
+      const benefit = getField(['benefit', 'benefits', 'savings', 'outcome'], 'N/A');
+      const evidence = getField(['evidence', 'verification', 'audit trail'], 'N/A');
+
+      return {
+        "ID": idVal,
+        "Kaizen Topic": topic,
+        "Problem / Opportunity": problem,
+        "Current State": currentState,
+        "Proposed Improvement": proposedImprovement,
+        "KPI": kpi,
+        "Baseline": baseline,
+        "Expected Target": target,
+        "Owner": owner,
+        "Start Date": startDate,
+        "Planned End Date": endDate,
+        "Status": status,
+        "% Completion": pct,
+        "Benefit": benefit,
+        "Evidence": evidence
+      };
+    }
+
+    function processUploadedData(rawRows) {
+      if (!Array.isArray(rawRows) || rawRows.length === 0) {
+        showToast("No data rows found in uploaded file.", true);
+        return;
+      }
+
+      const formatted = rawRows
+        .filter(r => r && Object.values(r).some(v => v !== null && v !== undefined && String(v).trim() !== ''))
+        .map((r, i) => normalizeRow(r, i));
+
+      if (formatted.length === 0) {
+        showToast("Could not parse valid Kaizen rows from this file.", true);
+        return;
+      }
+
+      kaizenData = formatted;
+      populateFilterDropdowns();
+      applyFilters();
+
+      // Toggle UI containers: hide empty state, reveal dashboard
+      document.getElementById('emptyStateContainer').classList.add('hidden');
+      document.getElementById('dashboardContent').classList.remove('hidden');
+      document.getElementById('clearDataBtn').classList.remove('hidden');
+      document.getElementById('exportCsvBtn').classList.remove('hidden');
+
+      closeModal('uploadModal');
+      showToast(`Loaded ${formatted.length} Kaizen initiatives successfully!`);
+    }
+
+    function clearDataset() {
+      kaizenData = [];
+      filteredData = [];
+
+      // Destroy active charts
+      ['status', 'owner', 'velocity', 'delta', 'matrix'].forEach(destroyChart);
+
+      // Revert views
+      document.getElementById('dashboardContent').classList.add('hidden');
+      document.getElementById('emptyStateContainer').classList.remove('hidden');
+      document.getElementById('clearDataBtn').classList.add('hidden');
+      document.getElementById('exportCsvBtn').classList.add('hidden');
+
+      // Clear filter controls
+      document.getElementById('searchInput').value = '';
+      document.getElementById('statusFilter').innerHTML = '<option value="ALL">All Statuses</option>';
+      document.getElementById('ownerFilter').innerHTML = '<option value="ALL">All Owners</option>';
+      document.getElementById('kpiFilter').innerHTML = '<option value="ALL">All KPIs</option>';
+      document.getElementById('dateStartFilter').value = '';
+      document.getElementById('dateEndFilter').value = '';
+
+      showToast("Dataset cleared. Dashboard reset to ready state.");
+    }
+
+    function updateKPIs(data) {
+      const total = data.length;
+      const completed = data.filter(d => String(d.Status).toLowerCase() === 'completed').length;
+      const inProgress = data.filter(d => String(d.Status).toLowerCase() === 'in progress').length;
+      
+      const today = new Date();
+      const overdue = data.filter(d => {
+        const s = String(d.Status).toLowerCase();
+        if (s === 'overdue' || s === 'delayed') return true;
+        if (s !== 'completed' && d['Planned End Date']) {
+          const endDate = new Date(d['Planned End Date']);
+          if (!isNaN(endDate) && endDate < today) {
+            return true;
+          }
+        }
+        return false;
+      }).length;
+
+      const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+      const avgCompletion = total > 0 ? Math.round(data.reduce((acc, c) => acc + (c['% Completion'] || 0), 0) / total) : 0;
+      const onTimeRate = total > 0 ? Math.max(0, Math.round(((total - overdue) / total) * 100)) : 100;
+      const benefitCount = data.filter(d => d.Benefit && d.Benefit !== 'N/A' && d.Benefit.trim().length > 3).length;
+
+      document.getElementById('kpiTotalCount').textContent = total;
+      document.getElementById('kpiActiveCount').textContent = `${inProgress} active`;
+      document.getElementById('kpiCompletionRate').textContent = `${completionRate}%`;
+      document.getElementById('kpiCompletedCount').textContent = `${completed} completed`;
+      document.getElementById('kpiAvgCompletion').textContent = `Avg: ${avgCompletion}%`;
+      document.getElementById('kpiOnTimeRate').textContent = `${onTimeRate}%`;
+      document.getElementById('kpiBenefitCount').textContent = benefitCount;
+      document.getElementById('kpiOverdueCount').textContent = overdue;
+
+      renderExecutiveInsights(data, { total, completed, overdue, onTimeRate, avgCompletion });
+    }
+
+    function renderExecutiveInsights(data, stats) {
+      const container = document.getElementById('aiInsightsContainer');
+      if (!data.length) {
+        container.innerHTML = `<div class="col-span-3 text-center text-slate-500 py-2">No active data points to analyze.</div>`;
+        return;
+      }
+
+      // Identify leading owner
+      const ownerMap = {};
+      data.forEach(d => {
+        const o = d.Owner || 'Unassigned';
+        if (!ownerMap[o]) ownerMap[o] = { count: 0, done: 0, pctSum: 0 };
+        ownerMap[o].count++;
+        ownerMap[o].pctSum += (d['% Completion'] || 0);
+        if (String(d.Status).toLowerCase() === 'completed') ownerMap[o].done++;
+      });
+
+      let leadChampion = 'N/A';
+      let highestScore = -1;
+      for (const o in ownerMap) {
+        const avg = ownerMap[o].pctSum / ownerMap[o].count;
+        const score = (ownerMap[o].count * 2) + avg;
+        if (score > highestScore) {
+          highestScore = score;
+          leadChampion = `${o} (${ownerMap[o].count} initiatives, avg ${Math.round(avg)}%)`;
+        }
+      }
+
+      const overdueRiskText = stats.overdue > 0
+        ? `<strong>${stats.overdue}</strong> lagging past target end dates. Expedite blocker review.`
+        : 'All non-completed tasks are currently within scheduled window.';
+
+      container.innerHTML = `
+        <div class="bg-slate-900/60 p-3 rounded-lg border border-slate-700/70">
+          <div class="text-blue-400 font-semibold mb-1 flex items-center gap-1.5">
+            <i data-lucide="zap" class="w-3.5 h-3.5"></i> Execution Velocity
+          </div>
+          <p class="text-slate-300">Portfolio maintains a <strong>${stats.onTimeRate}%</strong> on-time delivery schedule with an aggregate <strong>${stats.avgCompletion}%</strong> progress rating.</p>
+        </div>
+        <div class="bg-slate-900/60 p-3 rounded-lg border border-slate-700/70">
+          <div class="text-amber-400 font-semibold mb-1 flex items-center gap-1.5">
+            <i data-lucide="alert-octagon" class="w-3.5 h-3.5"></i> Critical Risk & Overdue
+          </div>
+          <p class="text-slate-300">${overdueRiskText}</p>
+        </div>
+        <div class="bg-slate-900/60 p-3 rounded-lg border border-slate-700/70">
+          <div class="text-emerald-400 font-semibold mb-1 flex items-center gap-1.5">
+            <i data-lucide="star" class="w-3.5 h-3.5"></i> CI Lead Champion
+          </div>
+          <p class="text-slate-300">Top delivery pace: <strong>${leadChampion}</strong>.</p>
+        </div>
+      `;
+      lucide.createIcons();
+    }
+
+    function destroyChart(name) {
+      if (charts[name]) {
+        charts[name].destroy();
+        charts[name] = null;
+      }
+    }
+
+    function renderCharts(data) {
+      if (!data.length) {
+        ['status', 'owner', 'velocity', 'delta', 'matrix'].forEach(destroyChart);
+        return;
+      }
+      renderStatusDonutChart(data);
+      renderOwnerWorkloadChart(data);
+      renderVelocityTrendChart(data);
+      renderTargetVsBaselineChart(data);
+      renderValueMatrixChart(data);
+    }
+
+    // Visual 1: Status & Health Donut
+    function renderStatusDonutChart(data) {
+      destroyChart('status');
+      const ctx = document.getElementById('statusDonutChart').getContext('2d');
+
+      const statuses = ['Completed', 'In Progress', 'Under Review', 'Not Started', 'Overdue'];
+      const counts = statuses.map(st => data.filter(d => {
+        const s = String(d.Status).toLowerCase();
+        if (st === 'Overdue') {
+          return s === 'overdue' || s === 'delayed';
+        }
+        return s === st.toLowerCase();
+      }).length);
+
+      charts.status = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: statuses,
+          datasets: [{
+            data: counts,
+            backgroundColor: [
+              '#10b981', // Completed
+              '#3b82f6', // In Progress
+              '#f59e0b', // Under Review
+              '#64748b', // Not Started
+              '#f43f5e'  // Overdue
+            ],
+            borderColor: '#1e293b',
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { color: '#cbd5e1', boxWidth: 12, padding: 10, font: { size: 10 } }
+            }
+          },
+          cutout: '68%'
+        }
+      });
+    }
+
+    // Visual 2: Owner Workload & Velocity
+    function renderOwnerWorkloadChart(data) {
+      destroyChart('owner');
+      const ctx = document.getElementById('ownerWorkloadChart').getContext('2d');
+
+      const owners = {};
+      data.forEach(d => {
+        const o = d.Owner || 'Unassigned';
+        if (!owners[o]) owners[o] = { count: 0, totalPct: 0 };
+        owners[o].count++;
+        owners[o].totalPct += (d['% Completion'] || 0);
+      });
+
+      const labels = Object.keys(owners);
+      const counts = labels.map(l => owners[l].count);
+      const avgs = labels.map(l => Math.round(owners[l].totalPct / owners[l].count));
+
+      charts.owner = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Total Initiatives',
+              data: counts,
+              backgroundColor: 'rgba(99, 102, 241, 0.8)',
+              borderRadius: 6,
+              yAxisID: 'y'
+            },
+            {
+              label: 'Avg % Completion',
+              data: avgs,
+              type: 'line',
+              borderColor: '#38bdf8',
+              backgroundColor: '#38bdf8',
+              tension: 0.3,
+              yAxisID: 'y1'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: { color: '#cbd5e1', font: { size: 11 } }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { color: '#cbd5e1' }
+            },
+            y: {
+              type: 'linear',
+              position: 'left',
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#94a3b8', stepSize: 1 }
+            },
+            y1: {
+              type: 'linear',
+              position: 'right',
+              grid: { display: false },
+              ticks: { color: '#38bdf8', callback: v => v + '%' },
+              max: 100,
+              min: 0
+            }
+          }
+        }
+      });
+    }
+
+    // Visual 3: Cumulative Velocity / S-Curve
+    function renderVelocityTrendChart(data) {
+      destroyChart('velocity');
+      const ctx = document.getElementById('velocityTrendChart').getContext('2d');
+
+      const datedItems = data.filter(d => d['Planned End Date'] && !isNaN(new Date(d['Planned End Date'])));
+      if (!datedItems.length) {
+        return;
+      }
+
+      datedItems.sort((a, b) => new Date(a['Planned End Date']) - new Date(b['Planned End Date']));
+      const uniqueDates = [...new Set(datedItems.map(d => d['Planned End Date']))].sort();
+
+      let cumPlanned = 0;
+      let cumDone = 0;
+      const plannedLine = [];
+      const actualLine = [];
+
+      uniqueDates.forEach(dt => {
+        const plannedHere = datedItems.filter(d => d['Planned End Date'] === dt).length;
+        const doneHere = datedItems.filter(d => d['Planned End Date'] === dt && String(d.Status).toLowerCase() === 'completed').length;
+        cumPlanned += plannedHere;
+        cumDone += doneHere;
+        plannedLine.push(cumPlanned);
+        actualLine.push(cumDone);
+      });
+
+      charts.velocity = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: uniqueDates,
+          datasets: [
+            {
+              label: 'Planned Cumulative',
+              data: plannedLine,
+              borderColor: '#3b82f6',
+              backgroundColor: 'rgba(59, 130, 246, 0.1)',
+              fill: true,
+              tension: 0.25,
+              pointRadius: 4
+            },
+            {
+              label: 'Actual Completed',
+              data: actualLine,
+              borderColor: '#10b981',
+              backgroundColor: 'rgba(16, 185, 129, 0.2)',
+              fill: true,
+              tension: 0.25,
+              pointRadius: 5,
+              pointBackgroundColor: '#10b981'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: {
+              grid: { color: 'rgba(255, 255, 255, 0.04)' },
+              ticks: { color: '#94a3b8' }
+            },
+            y: {
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#94a3b8', stepSize: 1 },
+              beginAtZero: true
+            }
+          }
+        }
+      });
+    }
+
+    // Visual 4: Baseline vs Expected Target Deltas
+    function renderTargetVsBaselineChart(data) {
+      destroyChart('delta');
+      const ctx = document.getElementById('targetVsBaselineChart').getContext('2d');
+      const sample = data.slice(0, 6);
+
+      const labels = sample.map(d => d['Kaizen Topic'].length > 18 ? d['Kaizen Topic'].slice(0, 16) + '...' : d['Kaizen Topic']);
+      const baselines = sample.map(d => parseNumeric(d.Baseline));
+      const targets = sample.map(d => parseNumeric(d['Expected Target']));
+
+      charts.delta = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Baseline',
+              data: baselines,
+              backgroundColor: 'rgba(244, 63, 94, 0.7)',
+              borderRadius: 6
+            },
+            {
+              label: 'Expected Target',
+              data: targets,
+              backgroundColor: 'rgba(16, 185, 129, 0.75)',
+              borderRadius: 6
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: '#cbd5e1', font: { size: 11 } } },
+            tooltip: {
+              callbacks: {
+                title: (items) => `${sample[items[0].dataIndex]['Kaizen Topic']} (${sample[items[0].dataIndex]['KPI']})`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { color: '#cbd5e1' }
+            },
+            y: {
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#94a3b8' },
+              beginAtZero: true
+            }
+          }
+        }
+      });
+    }
+
+    // Visual 5: Impact vs Effort Value Matrix Scatter
+    function renderValueMatrixChart(data) {
+      destroyChart('matrix');
+      const ctx = document.getElementById('valueMatrixChart').getContext('2d');
+
+      const points = data.map(d => {
+        const start = new Date(d['Start Date']);
+        const end = new Date(d['Planned End Date']);
+        let duration = (!isNaN(start) && !isNaN(end) && end >= start)
+          ? Math.round((end - start) / (1000 * 60 * 60 * 24))
+          : 30;
+        duration = Math.max(5, duration);
+
+        const delta = Math.abs(parseNumeric(d.Baseline) - parseNumeric(d['Expected Target']));
+        const benefitWeight = (d.Benefit && d.Benefit !== 'N/A') ? d.Benefit.length * 0.3 : 10;
+        const impactScore = Math.min(100, Math.max(10, Math.round(delta * 0.5 + benefitWeight)));
+
+        return {
+          x: duration,
+          y: impactScore,
+          title: d['Kaizen Topic'],
+          owner: d.Owner,
+          status: d.Status
+        };
+      });
+
+      charts.matrix = new Chart(ctx, {
+        type: 'bubble',
+        data: {
+          datasets: [{
+            label: 'Kaizen Value Matrix',
+            data: points.map(p => ({ x: p.x, y: p.y, r: 7 })),
+            backgroundColor: points.map(p => {
+              const s = String(p.status).toLowerCase();
+              if (s === 'completed') return 'rgba(16, 185, 129, 0.8)';
+              if (s === 'overdue' || s === 'delayed') return 'rgba(244, 63, 94, 0.8)';
+              return 'rgba(99, 102, 241, 0.8)';
+            }),
+            borderColor: '#334155'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const pt = points[ctx.dataIndex];
+                  return `${pt.title} | ${pt.owner} | Effort: ${pt.x} days, Impact: ${pt.y}`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              title: { display: true, text: 'Execution Effort / Duration (Days)', color: '#94a3b8' },
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#94a3b8' }
+            },
+            y: {
+              title: { display: true, text: 'Realized Impact / Benefit Score', color: '#94a3b8' },
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#94a3b8' }
+            }
+          }
+        }
+      });
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById('kaizenTableBody');
+      const startIdx = (currentPage - 1) * pageSize;
+      const endIdx = startIdx + pageSize;
+      const pageData = filteredData.slice(startIdx, endIdx);
+
+      if (pageData.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-slate-500">No matching Kaizens found.</td></tr>`;
+        document.getElementById('paginationInfo').textContent = 'Showing 0 to 0 of 0 entries';
+        document.getElementById('paginationControls').innerHTML = '';
+        return;
+      }
+
+      tbody.innerHTML = pageData.map((row) => {
+        const pct = row['% Completion'] || 0;
+        return `
+          <tr class="hover:bg-slate-800/60 transition cursor-pointer" onclick="openKaizenDetail('${row.ID}')">
+            <td class="py-3 px-3 font-mono font-medium text-blue-400">${row.ID}</td>
+            <td class="py-3 px-3 font-semibold text-slate-100 max-w-[220px] truncate" title="${row['Kaizen Topic']}">${row['Kaizen Topic']}</td>
+            <td class="py-3 px-3 text-slate-300">${row.Owner}</td>
+            <td class="py-3 px-3">
+              <span class="block font-medium text-slate-200">${row.KPI}</span>
+              <span class="text-[10px] text-slate-400">Target: ${row['Expected Target']}</span>
+            </td>
+            <td class="py-3 px-3 font-mono text-slate-400">${row['Planned End Date'] || '--'}</td>
+            <td class="py-3 px-3">
+              <div class="flex items-center gap-2">
+                <div class="w-16 bg-slate-700 h-1.5 rounded-full overflow-hidden">
+                  <div class="h-full ${pct === 100 ? 'bg-emerald-400' : 'bg-blue-500'}" style="width: ${pct}%"></div>
+                </div>
+                <span class="text-xs font-mono">${pct}%</span>
+              </div>
+            </td>
+            <td class="py-3 px-3">${getStatusBadge(row.Status)}</td>
+            <td class="py-3 px-3 text-right">
+              <button class="p-1.5 hover:bg-slate-700 text-slate-400 hover:text-white rounded-lg transition" onclick="event.stopPropagation(); openKaizenDetail('${row.ID}')">
+                <i data-lucide="eye" class="w-4 h-4"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      document.getElementById('paginationInfo').textContent = `Showing ${startIdx + 1} to ${Math.min(endIdx, filteredData.length)} of ${filteredData.length} entries`;
+
+      const totalPages = Math.ceil(filteredData.length / pageSize);
+      let pageButtons = '';
+
+      pageButtons += `<button class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-xs disabled:opacity-30" ${currentPage === 1 ? 'disabled' : ''} onclick="goToPage(${currentPage - 1})">Prev</button>`;
+
+      for (let p = 1; p <= totalPages; p++) {
+        if (p === 1 || p === totalPages || (p >= currentPage - 1 && p <= currentPage + 1)) {
+          pageButtons += `<button class="px-2.5 py-1 ${p === currentPage ? 'bg-blue-600 text-white font-bold' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'} rounded text-xs" onclick="goToPage(${p})">${p}</button>`;
+        } else if (p === currentPage - 2 || p === currentPage + 2) {
+          pageButtons += `<span class="px-1 text-slate-500">...</span>`;
+        }
+      }
+
+      pageButtons += `<button class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-xs disabled:opacity-30" ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''} onclick="goToPage(${currentPage + 1})">Next</button>`;
+
+      document.getElementById('paginationControls').innerHTML = pageButtons;
+      lucide.createIcons();
+    }
+
+    function goToPage(page) {
+      currentPage = page;
+      renderTable();
+    }
+
+    function handleSort(column) {
+      if (currentSortColumn === column) {
+        isSortAsc = !isSortAsc;
+      } else {
+        currentSortColumn = column;
+        isSortAsc = true;
+      }
+
+      filteredData.sort((a, b) => {
+        let valA = a[column];
+        let valB = b[column];
+
+        if (column === '% Completion') {
+          valA = parseNumeric(valA);
+          valB = parseNumeric(valB);
+        }
+
+        if (valA < valB) return isSortAsc ? -1 : 1;
+        if (valA > valB) return isSortAsc ? 1 : -1;
+        return 0;
+      });
+
+      currentPage = 1;
+      renderTable();
+    }
+
+    function populateFilterDropdowns() {
+      const statuses = [...new Set(kaizenData.map(d => d.Status).filter(Boolean))].sort();
+      const owners = [...new Set(kaizenData.map(d => d.Owner).filter(Boolean))].sort();
+      const kpis = [...new Set(kaizenData.map(d => d.KPI).filter(Boolean))].sort();
+
+      const statusSelect = document.getElementById('statusFilter');
+      statusSelect.innerHTML = `<option value="ALL">All Statuses</option>` +
+        statuses.map(s => `<option value="${s}">${s}</option>`).join('');
+
+      const ownerSelect = document.getElementById('ownerFilter');
+      ownerSelect.innerHTML = `<option value="ALL">All Owners (${owners.length})</option>` +
+        owners.map(o => `<option value="${o}">${o}</option>`).join('');
+
+      const kpiSelect = document.getElementById('kpiFilter');
+      kpiSelect.innerHTML = `<option value="ALL">All KPIs (${kpis.length})</option>` +
+        kpis.map(k => `<option value="${k}">${k}</option>`).join('');
+    }
+
+    function applyFilters() {
+      const searchTerm = document.getElementById('searchInput').value.trim().toLowerCase();
+      const statusTerm = document.getElementById('statusFilter').value;
+      const ownerTerm = document.getElementById('ownerFilter').value;
+      const kpiTerm = document.getElementById('kpiFilter').value;
+      const dateStart = document.getElementById('dateStartFilter').value;
+      const dateEnd = document.getElementById('dateEndFilter').value;
+
+      filteredData = kaizenData.filter(d => {
+        if (searchTerm) {
+          const matchString = `${d.ID} ${d['Kaizen Topic']} ${d['Problem / Opportunity']} ${d.Owner} ${d.Benefit} ${d.KPI}`.toLowerCase();
+          if (!matchString.includes(searchTerm)) return false;
+        }
+
+        if (statusTerm !== 'ALL' && d.Status !== statusTerm) {
+          return false;
+        }
+
+        if (ownerTerm !== 'ALL' && d.Owner !== ownerTerm) return false;
+        if (kpiTerm !== 'ALL' && d.KPI !== kpiTerm) return false;
+
+        if (dateStart && d['Planned End Date'] && d['Planned End Date'] < dateStart) return false;
+        if (dateEnd && d['Planned End Date'] && d['Planned End Date'] > dateEnd) return false;
+
+        return true;
+      });
+
+      document.getElementById('filterCountBadge').textContent = `Showing ${filteredData.length} of ${kaizenData.length} items`;
+
+      currentPage = 1;
+      updateKPIs(filteredData);
+      renderCharts(filteredData);
+      renderTable();
+    }
+
+    function resetFilters() {
+      document.getElementById('searchInput').value = '';
+      document.getElementById('statusFilter').value = 'ALL';
+      document.getElementById('ownerFilter').value = 'ALL';
+      document.getElementById('kpiFilter').value = 'ALL';
+      document.getElementById('dateStartFilter').value = '';
+      document.getElementById('dateEndFilter').value = '';
+      applyFilters();
+    }
+
+    window.openKaizenDetail = function(id) {
+      const item = kaizenData.find(d => d.ID === id);
+      if (!item) return;
+
+      document.getElementById('modalKaizenId').textContent = item.ID;
+      document.getElementById('modalTopic').textContent = item['Kaizen Topic'];
+      document.getElementById('modalOwner').textContent = item.Owner;
+      document.getElementById('modalKpi').textContent = item.KPI;
+      document.getElementById('modalDates').textContent = `${item['Start Date'] || 'TBD'} to ${item['Planned End Date'] || 'TBD'}`;
+      document.getElementById('modalCompletion').textContent = `${item['% Completion']}%`;
+      document.getElementById('modalProgressBar').style.width = `${item['% Completion']}%`;
+
+      document.getElementById('modalStatusBadge').innerHTML = getStatusBadge(item.Status);
+      document.getElementById('modalProblem').textContent = item['Problem / Opportunity'];
+      document.getElementById('modalCurrentState').textContent = item['Current State'];
+      document.getElementById('modalBaseline').textContent = item.Baseline;
+      document.getElementById('modalImprovement').textContent = item['Proposed Improvement'];
+      document.getElementById('modalTarget').textContent = item['Expected Target'];
+      document.getElementById('modalBenefit').textContent = item.Benefit;
+      document.getElementById('modalEvidence').textContent = item.Evidence || 'N/A';
+
+      document.getElementById('detailModal').classList.remove('hidden');
+      lucide.createIcons();
+    };
+
+    function closeModal(modalId) {
+      document.getElementById(modalId).classList.add('hidden');
+    }
+
+    function downloadBlankTemplate() {
+      const csvContent = Papa.unparse({
+        fields: CSV_TEMPLATE_HEADERS,
+        data: [
+          [
+            "KZ-001",
+            "Example SMED Setup Reduction",
+            "Tool changeover takes 50 minutes causing line idle time.",
+            "Average setup duration is 50 minutes with manual bolt clamps.",
+            "Install quick-lock pneumatic fixtures and pre-staged tooling.",
+            "Changeover Duration (Minutes)",
+            "50",
+            "15",
+            "Jane Doe",
+            "2026-09-01",
+            "2026-10-15",
+            "In Progress",
+            "60",
+            "Saves 35 mins per shift, gaining 12 production hrs/mo.",
+            "Time study video log in shared QA folder"
+          ]
+        ]
+      });
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = "Kaizen_Register_Template.csv";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      showToast("Template downloaded! Fill and upload to see live metrics.");
+    }
+
+    function handleFile(file) {
+      const name = file.name.toLowerCase();
+      if (name.endsWith('.csv') || name.endsWith('.tsv') || name.endsWith('.txt')) {
+        Papa.parse(file, {
+          header: true,
+          skipEmptyLines: true,
+          complete: function(results) {
+            processUploadedData(results.data);
+          },
+          error: function(err) {
+            showToast("Failed to parse CSV: " + err.message, true);
+          }
+        });
+      } else if (name.endsWith('.xlsx') || name.endsWith('.xls')) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheet = workbook.SheetNames[0];
+            const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet], { defval: "" });
+            processUploadedData(jsonData);
+          } catch (err) {
+            showToast("Failed to parse Excel workbook: " + err.message, true);
+          }
+        };
+        reader.readAsArrayBuffer(file);
+      } else {
+        showToast("Unsupported file extension. Please select CSV or Excel (.xlsx).", true);
+      }
+    }
+
+    function setupDragAndDrop(zoneId, inputId) {
+      const zone = document.getElementById(zoneId);
+      const input = document.getElementById(inputId);
+
+      zone.addEventListener('click', () => input.click());
+
+      zone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        zone.classList.add('border-blue-500', 'bg-blue-950/20');
+      });
+
+      zone.addEventListener('dragleave', () => {
+        zone.classList.remove('border-blue-500', 'bg-blue-950/20');
+      });
+
+      zone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        zone.classList.remove('border-blue-500', 'bg-blue-950/20');
+        if (e.dataTransfer.files.length) {
+          handleFile(e.dataTransfer.files[0]);
+        }
+      });
+
+      input.addEventListener('change', (e) => {
+        if (e.target.files.length) {
+          handleFile(e.target.files[0]);
+        }
+      });
+    }
+
+    function exportFilteredCSV() {
+      if (!filteredData.length) {
+        showToast("No data to export.", true);
+        return;
+      }
+      const csv = Papa.unparse(filteredData);
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Kaizen_Filtered_Export_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      showToast("Filtered register exported to CSV!");
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+
+      // Configure upload dropzones
+      setupDragAndDrop('mainDropZone', 'mainFileInput');
+      setupDragAndDrop('modalDropZone', 'modalFileInput');
+
+      // Header and modal triggers
+      document.getElementById('headerUploadBtn').addEventListener('click', () => {
+        document.getElementById('uploadModal').classList.remove('hidden');
+      });
+      document.getElementById('closeUploadModalBtn').addEventListener('click', () => closeModal('uploadModal'));
+      document.getElementById('cancelUploadBtn').addEventListener('click', () => closeModal('uploadModal'));
+      document.getElementById('closeDetailModalBtn').addEventListener('click', () => closeModal('detailModal'));
+      document.getElementById('modalDismissBtn').addEventListener('click', () => closeModal('detailModal'));
+
+      // Template download buttons
+      document.getElementById('downloadTemplateBtn').addEventListener('click', downloadBlankTemplate);
+      document.getElementById('emptyTemplateBtn').addEventListener('click', downloadBlankTemplate);
+
+      // Data clearance & export
+      document.getElementById('clearDataBtn').addEventListener('click', clearDataset);
+      document.getElementById('exportCsvBtn').addEventListener('click', exportFilteredCSV);
+
+      // Slicers events
+      document.getElementById('searchInput').addEventListener('input', applyFilters);
+      document.getElementById('statusFilter').addEventListener('change', applyFilters);
+      document.getElementById('ownerFilter').addEventListener('change', applyFilters);
+      document.getElementById('kpiFilter').addEventListener('change', applyFilters);
+      document.getElementById('dateStartFilter').addEventListener('change', applyFilters);
+      document.getElementById('dateEndFilter').addEventListener('change', applyFilters);
+      document.getElementById('clearFiltersBtn').addEventListener('click', resetFilters);
+
+      // Pagination selector
+      document.getElementById('pageSizeSelect').addEventListener('change', (e) => {
+        pageSize = parseInt(e.target.value);
+        currentPage = 1;
+        renderTable();
+      });
+    });
+  </script>
+</body>
+</html>
